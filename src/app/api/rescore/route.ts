@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { buildCoachService, scoringMode } from "@/infrastructure/composition";
-import { EVALUATIONS, TRANSCRIPTS } from "@/data/seed";
+import { resolveCall } from "@/lib/calls";
 import { ScoringIntegrityError } from "@/domain/errors";
 
 export const runtime = "nodejs";
@@ -15,6 +15,7 @@ export const maxDuration = 60;
 
 const Schema = z.object({
   callId: z.string().min(1),
+  skillId: z.number().int().optional(),
   drillTranscript: z.string().min(1),
 });
 
@@ -27,17 +28,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { callId, drillTranscript } = parsed.data;
-  const evaluation = EVALUATIONS[callId];
-  const transcript = TRANSCRIPTS[callId];
-  if (!evaluation || !transcript) {
+  const { callId, skillId, drillTranscript } = parsed.data;
+  const resolved = await resolveCall(callId);
+  if (!resolved) {
     return NextResponse.json({ error: `unknown call ${callId}` }, { status: 404 });
   }
 
   const coach = buildCoachService();
   try {
-    const moment = coach.fumbledMoment(evaluation, transcript);
-    const rescore = await coach.rescore(drillTranscript, moment, evaluation);
+    const moment = coach.fumbledMoment(resolved.evaluation, resolved.transcript, skillId);
+    const rescore = await coach.rescore(drillTranscript, moment, resolved.evaluation);
     return NextResponse.json({ mode: scoringMode(), rescore });
   } catch (err) {
     if (err instanceof ScoringIntegrityError) {

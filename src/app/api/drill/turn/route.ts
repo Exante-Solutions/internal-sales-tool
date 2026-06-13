@@ -10,7 +10,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropic } from "@/lib/anthropic";
 import { MODEL } from "@/config";
-import { EVALUATIONS, TRANSCRIPTS, DRILL_SCENARIOS } from "@/data/seed";
+import { DRILL_SCENARIOS } from "@/data/seed";
+import { resolveCall } from "@/lib/calls";
 import { buildCoachService, scoringMode } from "@/infrastructure/composition";
 
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ export const maxDuration = 60;
 
 const Schema = z.object({
   callId: z.string().min(1),
+  skillId: z.number().int().optional(),
   history: z.array(z.object({ role: z.enum(["rep", "prospect"]), content: z.string() })).default([]),
   repTurn: z.string().min(1),
 });
@@ -32,13 +34,13 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "invalid request" }, { status: 400 });
   }
-  const { callId, history, repTurn } = parsed.data;
+  const { callId, skillId, history, repTurn } = parsed.data;
 
-  const evaluation = EVALUATIONS[callId];
-  const transcript = TRANSCRIPTS[callId];
-  if (!evaluation || !transcript) {
+  const resolved = await resolveCall(callId);
+  if (!resolved) {
     return NextResponse.json({ error: `unknown call ${callId}` }, { status: 404 });
   }
+  const { evaluation, transcript } = resolved;
 
   let scenario = DRILL_SCENARIOS[callId];
 
@@ -52,9 +54,9 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Live: Claude plays the prospect ──────────────────────────────────────
-  if (!scenario) {
+  if (!scenario || (skillId != null && scenario.rubric_item_id !== skillId)) {
     const coach = buildCoachService();
-    const moment = coach.fumbledMoment(evaluation, transcript);
+    const moment = coach.fumbledMoment(evaluation, transcript, skillId);
     scenario = await coach.scenario(moment, transcript);
   }
 

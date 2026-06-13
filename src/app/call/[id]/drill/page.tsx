@@ -1,19 +1,33 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
-import { EVALUATIONS, TRANSCRIPTS, DRILL_SCENARIOS, callById } from "@/data/seed";
+import { DRILL_SCENARIOS } from "@/data/seed";
+import { resolveCall } from "@/lib/calls";
 import { seededCoachService } from "@/infrastructure/composition";
 import { DrillClient } from "@/components/drill-client";
 
-export default async function DrillPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DrillPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ skillId?: string }>;
+}) {
   const { id } = await params;
-  const evaluation = EVALUATIONS[id];
-  const transcript = TRANSCRIPTS[id];
-  const meta = callById(id);
-  if (!evaluation || !transcript || !meta) notFound();
+  const { skillId: skillIdRaw } = await searchParams;
+  // A manager-assigned drill (team view) targets a SPECIFIC skill via ?skillId;
+  // otherwise the rep's own highest-leverage gap.
+  const skillId = skillIdRaw ? Number(skillIdRaw) : undefined;
+  const targetItemId = skillId != null && Number.isInteger(skillId) ? skillId : undefined;
 
-  const moment = seededCoachService().fumbledMoment(evaluation, transcript);
-  const scenario = DRILL_SCENARIOS[id];
+  const resolved = await resolveCall(id);
+  if (!resolved) notFound();
+  const { evaluation, transcript, meta } = resolved;
+
+  const moment = seededCoachService().fumbledMoment(evaluation, transcript, targetItemId);
+  // Only reuse the seeded scenario when it matches the skill being drilled.
+  const seeded = DRILL_SCENARIOS[id];
+  const scenario = seeded && seeded.rubric_item_id === moment.rubric_item_id ? seeded : undefined;
   const openingLine = scenario?.opening_line ?? moment.prospect_line;
   const recovery = scenario?.recovery_condition ?? moment.anchorHigh;
   const prospectSystemPrompt =
@@ -26,13 +40,14 @@ export default async function DrillPage({ params }: { params: Promise<{ id: stri
         <ChevronLeft className="h-4 w-4" /> Back to call
       </Link>
       <div>
-        <h1 className="text-xl font-bold">Voice drill</h1>
+        <h1 className="text-xl font-bold">Coaching session</h1>
         <p className="text-xs text-neutral-500">
-          Re-stage the fumbled moment from {meta.prospect}. Recover to raise your score.
+          A quick prep with your coach, then a live roleplay with {meta.prospect}. Recover to raise your score.
         </p>
       </div>
       <DrillClient
         callId={id}
+        skillId={moment.rubric_item_id}
         skill={moment.skill}
         before={moment.before_1_5}
         prospectSystemPrompt={prospectSystemPrompt}

@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DeltaCard } from "@/components/delta-card";
 import { VoiceDrill } from "@/components/voice-drill";
+import { CoachPrep } from "@/components/coach-prep";
 import { cn } from "@/lib/utils";
 
 type Turn = { role: "rep" | "prospect"; content: string };
-type Mode = "choose" | "voice" | "text";
+type Mode = "prep" | "choose" | "voice" | "text";
 
 export function DrillClient({
   callId,
+  skillId,
   skill,
   before,
   prospectSystemPrompt,
@@ -22,18 +24,24 @@ export function DrillClient({
   recoveryCondition,
 }: {
   callId: string;
+  skillId: number;
   skill: string;
   before: number;
   prospectSystemPrompt: string;
   openingLine: string;
   recoveryCondition: string;
 }) {
-  const [mode, setMode] = useState<Mode>("choose");
+  const [mode, setMode] = useState<Mode>("prep");
+
+  if (mode === "prep") {
+    return <CoachPrep callId={callId} skillId={skillId} skill={skill} onReady={() => setMode("choose")} />;
+  }
 
   if (mode === "voice") {
     return (
       <VoiceDrill
         callId={callId}
+        skillId={skillId}
         skill={skill}
         before={before}
         prospectSystemPrompt={prospectSystemPrompt}
@@ -44,7 +52,7 @@ export function DrillClient({
   }
 
   if (mode === "text") {
-    return <TextDrill callId={callId} skill={skill} before={before} openingLine={openingLine} recoveryCondition={recoveryCondition} />;
+    return <TextDrill callId={callId} skillId={skillId} skill={skill} before={before} openingLine={openingLine} recoveryCondition={recoveryCondition} />;
   }
 
   return (
@@ -67,12 +75,14 @@ export function DrillClient({
 
 function TextDrill({
   callId,
+  skillId,
   skill,
   before,
   openingLine,
   recoveryCondition,
 }: {
   callId: string;
+  skillId: number;
   skill: string;
   before: number;
   openingLine: string;
@@ -103,7 +113,7 @@ function TextDrill({
       const res = await fetch("/api/drill/turn", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callId, history, repTurn }),
+        body: JSON.stringify({ callId, skillId, history, repTurn }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "drill turn failed");
@@ -124,7 +134,7 @@ function TextDrill({
       const res = await fetch("/api/rescore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callId, drillTranscript }),
+        body: JSON.stringify({ callId, skillId, drillTranscript }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "rescore failed");

@@ -14,6 +14,7 @@ type Line = { source: "user" | "ai"; message: string };
 
 function VoiceDrillInner({
   callId,
+  skillId,
   skill,
   before,
   prospectSystemPrompt,
@@ -21,6 +22,7 @@ function VoiceDrillInner({
   onTextFallback,
 }: {
   callId: string;
+  skillId: number;
   skill: string;
   before: number;
   prospectSystemPrompt: string;
@@ -80,7 +82,7 @@ function VoiceDrillInner({
       const res = await fetch("/api/rescore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callId, drillTranscript: drillTranscript || "(no speech captured)" }),
+        body: JSON.stringify({ callId, skillId, drillTranscript: drillTranscript || "(no speech captured)" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "rescore failed");
@@ -179,7 +181,7 @@ function VoiceDrillInner({
 
       {phase === "live" && (
         <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-neutral-500">
-          <Sparkles className="h-3 w-3" /> Quantify the pain to recover — name a $ figure or DSO and the prospect concedes.
+          <Sparkles className="h-3 w-3" /> Handle the moment to the bar and the prospect warms up and concedes.
         </p>
       )}
       {error && (
@@ -196,6 +198,7 @@ function VoiceDrillInner({
 
 export function VoiceDrill(props: {
   callId: string;
+  skillId: number;
   skill: string;
   before: number;
   prospectSystemPrompt: string;

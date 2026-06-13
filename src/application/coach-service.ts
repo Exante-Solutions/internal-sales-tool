@@ -5,10 +5,16 @@
  * pure grader the fixture test uses, so a bad model output can never escape.
  */
 
-import { validateEvaluation, validateRescore, selectWeakest } from "@scoring";
+import { validateEvaluation, validateRescore, selectWeakest, leverage } from "@scoring";
 import type { GradeableEvaluation } from "@/domain/grading";
 import type { Evaluation, Transcript, FumbledMoment, Rescore } from "@/domain/coaching";
-import type { ScorerGateway, RescorerGateway, DrillScenarioGateway } from "@/domain/ports";
+import type { CoachBriefing, SkillGap } from "@/domain/briefing";
+import type {
+  ScorerGateway,
+  RescorerGateway,
+  DrillScenarioGateway,
+  CoachBriefingGateway,
+} from "@/domain/ports";
 import { rubricFor } from "@/domain/rubric";
 import { ScoringIntegrityError } from "@/domain/errors";
 
@@ -33,6 +39,7 @@ export class CoachService {
     private readonly scorer: ScorerGateway,
     private readonly drillScenario: DrillScenarioGateway,
     private readonly rescorer: RescorerGateway,
+    private readonly briefing?: CoachBriefingGateway,
   ) {}
 
   /** Score a transcript and refuse to return anything the grader rejects. */
@@ -47,12 +54,22 @@ export class CoachService {
     return evaluation;
   }
 
-  /** Build the fumbled moment for the highest-leverage item (the drill target). */
-  fumbledMoment(evaluation: Evaluation, transcript: Transcript): FumbledMoment {
-    const weakest = selectWeakest(evaluation.items);
-    if (!weakest) throw new ScoringIntegrityError(["no items to select a weakest from"]);
+  /**
+   * Build the fumbled moment for a drill target. Defaults to the rep's
+   * highest-leverage item; pass `targetItemId` to drill a SPECIFIC item (e.g.
+   * the team-wide gap a manager assigned), so the assigned skill is the one
+   * practiced — not the rep's personal weakness (SPEC §22 / RUBRIC F4-2).
+   */
+  fumbledMoment(evaluation: Evaluation, transcript: Transcript, targetItemId?: number): FumbledMoment {
+    const explicit =
+      targetItemId != null ? evaluation.items.find((i) => i.rubric_item_id === targetItemId) : undefined;
+    const weakest = explicit ?? (() => {
+      const w = selectWeakest(evaluation.items);
+      return w ? evaluation.items.find((i) => i.rubric_item_id === w.rubric_item_id) : undefined;
+    })();
+    if (!weakest) throw new ScoringIntegrityError(["no items to select a drill target from"]);
 
-    const item = evaluation.items.find((i) => i.rubric_item_id === weakest.rubric_item_id)!;
+    const item = weakest;
     const rubricItem = rubricFor(transcript.callType).items.find((r) => r.id === item.rubric_item_id)!;
 
     const idx = transcript.segments.findIndex((s) => s.ts === item.cite_ts_seconds);
@@ -80,6 +97,29 @@ export class CoachService {
 
   scenario(moment: FumbledMoment, transcript: Transcript) {
     return this.drillScenario.scenario(moment, transcript);
+  }
+
+  /** The rep's other weak items on this call type (context for the coach prep,
+   * not the focus) — highest-leverage first, excluding the drilled item. */
+  gaps(evaluation: Evaluation): SkillGap[] {
+    const weakestId = selectWeakest(evaluation.items)?.rubric_item_id;
+    return evaluation.items
+      .filter((i) => i.rubric_item_id !== weakestId)
+      .sort((a, b) => leverage(b) - leverage(a))
+      .slice(0, 4)
+      .map((i) => ({ skill: i.name, score_1_5: i.score_1_5, weight: i.weight }));
+  }
+
+  /** Coaching prep before the roleplay (Feature 1). */
+  brief(moment: FumbledMoment, evaluation: Evaluation, transcript: Transcript): Promise<CoachBriefing> {
+    if (!this.briefing) throw new ScoringIntegrityError(["no coach-briefing gateway wired"]);
+    return this.briefing.brief(moment, this.gaps(evaluation), transcript);
+  }
+
+  /** The rep's single follow-up question to the coach. */
+  answer(question: string, briefing: CoachBriefing, transcript: Transcript): Promise<string> {
+    if (!this.briefing) throw new ScoringIntegrityError(["no coach-briefing gateway wired"]);
+    return this.briefing.answer(question, briefing, transcript);
   }
 
   /** Re-score a drill transcript on the one drilled item; verify the delta math. */

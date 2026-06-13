@@ -51,15 +51,15 @@ export function ProgressView() {
         ))}
       </div>
 
-      <Card>
-        <ul className="divide-y divide-neutral-800">
-          {items.map((it) => {
-            const series = history.map((h) => h.scores[it.id]);
-            const first = series[0];
-            const last = series[series.length - 1];
-            const delta = last - first;
-            return (
-              <li key={it.id} className="flex items-center gap-3 p-3">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+        {items.map((it) => {
+          const series = history.map((h) => h.scores[it.id]);
+          const first = series[0];
+          const last = series[series.length - 1];
+          const delta = last - first;
+          return (
+            <Card key={it.id}>
+              <CardContent className="flex items-center gap-3 pt-4">
                 <div className="flex-1">
                   <p className="text-sm text-neutral-100">{it.name}</p>
                   <p className="text-xs text-neutral-500">weight {it.weight}</p>
@@ -77,11 +77,11 @@ export function ProgressView() {
                     {delta}
                   </span>
                 </div>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

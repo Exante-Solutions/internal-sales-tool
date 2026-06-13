@@ -1,5 +1,7 @@
-import { RepHome } from "@/components/rep-home";
+import { HomeMenu } from "@/components/home-menu";
+import { buildSession } from "@/infrastructure/composition";
 
-export default function HomePage() {
-  return <RepHome />;
+export default async function HomePage() {
+  const session = await buildSession().current();
+  return <HomeMenu session={session} />;
 }

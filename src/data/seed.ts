@@ -107,6 +107,32 @@ export function repProgress(repId: string, callType: CallType): HistoryPoint[] {
   return seededHistory(repId, callType);
 }
 
+// ── Team read layer: per-rep-per-item scores + drill routing (Feature 4) ─────
+
+export interface RepItemScore {
+  repId: string;
+  repName: string;
+  score: number;
+}
+
+/** Latest-call score for every rep on one rubric item — powers the team view's
+ * people drill-down and the coaching-action's "who needs what" (SPEC §22). */
+export function teamItemScores(callType: CallType, itemId: number): RepItemScore[] {
+  return REPS.map((r) => {
+    const hist = seededHistory(r.id, callType);
+    return { repId: r.id, repName: r.name, score: hist[hist.length - 1].scores[itemId] };
+  });
+}
+
+/** Where a rep drills this call type: their own scored call if any, else the
+ * canonical seeded call of that type — so "assign a drill" always routes in the
+ * demo (the contextualized drill re-stages that call's weakest moment). */
+export function seededDrillCallId(repId: string, callType: CallType): string | undefined {
+  const own = CALLS.find((c) => c.repId === repId && c.callType === callType && EVALUATIONS[c.id]);
+  if (own) return own.id;
+  return CALLS.find((c) => c.callType === callType && EVALUATIONS[c.id])?.id;
+}
+
 export interface TeamItemStat {
   itemId: number;
   name: string;

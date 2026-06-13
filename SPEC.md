@@ -381,3 +381,129 @@ Each step is independently demoable; if time runs short, the loop (1→5) is pro
 | `DATABASE_URL`        | yes      | Neon Postgres connection string (free tier is enough).                                   |
 
 Declared app constants (model id, hackathon metadata) live in `src/config.ts`. The fail-fast accessor pattern (`getAnthropicApiKey()`) applies to every required var — a missing key throws a clear "copy .env.example to .env" error rather than failing deep in a request.
+
+**Batch-2 additions (§18–§23).** Auth0 is now scaffolded (env documented; the live SDK is deferred — see §22). `DATABASE_URL` graduates from "declared" to **actually used** by the new `CallStore` (§20), behind a fallback so the app and `verify.sh` stay green when it is unset.
+
+| Var                   | Required | Purpose                                                                                  |
+| --------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `AUTH0_DOMAIN`        | no¹      | Auth0 tenant domain. Documented in `.env.example`; consumed only once the Auth0 adapter ships (§22). |
+| `AUTH0_CLIENT_ID`     | no¹      | Auth0 application client id.                                                             |
+| `AUTH0_CLIENT_SECRET` | no¹      | Auth0 application client secret (server-only).                                           |
+| `AUTH0_SECRET`        | no¹      | Cookie/session encryption secret for the Auth0 SDK.                                      |
+| `APP_BASE_URL`        | no¹      | Public base URL used for the OAuth callback (e.g. `https://coachloop.vercel.app`).       |
+
+¹ **When unset, the app runs as the seeded team (no login).** This is the deliberate demo fallback (§22): a missing Auth0 config can never break the demo or the verification gate.
+
+---
+
+# Part II — Batch 2 capabilities
+
+> Each section below is a **first-class capability**: what it does, who it's for, its non-goals, the **demo-vs-real boundary**, the **touched files/interfaces**, and an **end-to-end verification line**. All five are **additive** per CLAUDE.md: new ports at the edge or read/synthesis layers. **The core domain — `Evaluation`, `ItemScore`, `Rescore` in `src/domain/coaching.ts` and the `lib/scoring/grade.mjs` write model — does not change.** New domain types live in new files (`domain/briefing.ts`, `domain/session.ts`, `domain/store.ts`, `domain/team.ts`) so the existing write model is provably untouched (`git diff` on `coaching.ts`/`grade.mjs` is empty).
+
+## 18. Feature 0 — Responsive (mobile **and** desktop)
+
+**What:** the app keeps its excellent thumb-friendly phone layout *and* reflows to a navigable desktop web layout — no longer locked to `max-w-md`. On ≥`lg`, the bottom tab bar becomes a persistent left **sidebar**, the content column widens, and dense views (team, progress) use multi-column grids instead of a single scroll.
+
+**Who:** the rep on a phone (unchanged experience) and the manager/operator on a laptop (the team view is the one that most needs the wider canvas).
+
+**Non-goals:** no separate desktop codebase; no per-device routing; no redesign of the visual language — same components, responsive Tailwind breakpoints only.
+
+**Demo-vs-real boundary:** fully real — pure layout. No env, no fallback. Mobile (375px) and desktop (≥1280px) are both first-class.
+
+**Touched files/interfaces:**
+- `src/app/layout.tsx` — container goes from `max-w-md` to a responsive shell (mobile column ≤`md`; sidebar + wide content ≥`lg`), bottom padding only on mobile.
+- `src/components/app-nav.tsx` *(new)* — one nav component that renders as a bottom bar on mobile and a left sidebar on desktop; replaces `bottom-nav.tsx` (kept as a thin re-export or deleted).
+- `src/components/team-view.tsx`, `src/components/progress-view.tsx`, `src/components/home-menu.tsx` — reflow to `lg:grid-cols-*`.
+
+**End-to-end verification:** at 375×812 the hero loop is reachable with no horizontal scroll and tap targets ≥40px (RUBRIC A2); at ≥1280px the left sidebar is visible and the team view renders multi-column (RUBRIC F0-1, manual). Structural gate: `verify.sh` greps that `app-nav.tsx` carries both a mobile (`bottom`/`flex`) and a desktop (`lg:`) branch, and that `layout.tsx` no longer hard-locks the shell to `max-w-md` (F0-2).
+
+## 19. Feature 1 — Contextualized drills (coach prep → roleplay)
+
+**What:** a drill no longer dumps the rep straight into a simulation. Tapping a weakness opens a **coaching session**: a sales-leader persona (Opus 4.8) gives a short, grounded **prep** — what happened on the call, why it matters, the one move to make — then **invites the rep into the roleplay**. The rep may ask **one** follow-up question, or hit "I'm ready." The session is **contextualized to the item the rep clicked**, while the coach is **aware of the rep's other gaps on that call type** (so the prep can connect the dots) — but it stays focused on the clicked skill. When the sim starts, the **AI prospect opens like a real call** — a natural greeting and a little context — and the opening **creates a situation that surfaces the skill without naming or telegraphing it**, so the rep has to *navigate* to it. It must read as a real sales-leader coaching session, not a metric drill.
+
+**Who:** the rep practicing a specific skill; the value is the "feels like real coaching + real call" quality that makes the practice transfer.
+
+**Non-goals:** not a multi-turn open-ended chat (capped at briefing + 1 follow-up so the rep practices fast); the prep does **not** restate the rubric anchors verbatim or name the metric to the prospect; no change to scoring/re-scoring.
+
+**Demo-vs-real boundary:** *real* = Opus generates the briefing, the follow-up answer, and a non-telegraphing prospect opening. *Demo/offline* = `FakeCoachBriefing` returns a deterministic, on-character briefing + canned follow-up, and the seeded scenario's opening is used — so the full coach→roleplay flow runs with no key. Both paths pass the **anti-telegraph** check.
+
+**Touched files/interfaces:**
+- `src/domain/briefing.ts` *(new)* — `CoachBriefing { skill, situation, the_move, sample_line, opener }`.
+- `src/domain/ports.ts` — add `CoachBriefingGateway { brief(moment, gaps, transcript): Promise<CoachBriefing>; answer(question, briefing, transcript): Promise<string> }` (`gaps` = the rep's other weak items on this call type).
+- `src/infrastructure/anthropic-coach-briefing.ts` *(new)* + `FakeCoachBriefing` (in `fake-adapters.ts`).
+- `src/infrastructure/anthropic-drill-scenario.ts` — prompt enhanced: natural greeting + context, **a situation that surfaces the skill without naming it** (self-filtered against `lib/coaching/telegraph.mjs`).
+- `lib/coaching/telegraph.mjs` *(new, pure)* — `mentionsSkill(text, skillName)` the single source of truth for the anti-telegraph rule; imported by the adapter and asserted by the fixture test.
+- `src/application/coach-service.ts` — add `brief()`/`answer()` orchestration + `gaps()` helper (the other weak items); no write-model change.
+- `src/app/api/coach/brief/route.ts` *(new)* — POST returns the briefing; with `{question}` returns the single follow-up answer.
+- `src/components/coach-prep.tsx` *(new)* + `src/components/drill-client.tsx` — a `prep` stage precedes `choose`/`voice`/`text`.
+
+**End-to-end verification:** fixture test asserts a briefing carries `situation` + `the_move` + `opener`, and that **`mentionsSkill(opener, skill) === false`** (the prospect opening never names the drilled skill) — and that a telegraphing opener is *rejected* (fails loudly). Qualitative (agent-graded rubric, §RUBRIC F1-Q): the prep reads as a real sales-leader coaching session and the opening surfaces the skill naturally. Live (manual): tapping a weakness shows the coach prep, then the roleplay opens in character.
+
+## 20. Feature 2 — Live call ingestion (seeded files + paste/upload)
+
+**What:** a rep can add a call by **picking a seeded example transcript** or by **pasting/uploading** raw transcript text. The transcript is normalized (`lib/ingest`), scored through the existing `/api/score` loop, and the result is **persisted as a user-owned call** so it appears in the rep's call list and is drillable like the seeded calls. Seeded examples are the **reliable on-ramp** (always present, no typing); paste/upload is the real path.
+
+**Who:** a rep bringing a real call; an evaluator/operator wanting to try their own transcript in the demo.
+
+**Non-goals:** no audio/video → transcription; no live Circleback webhook (still §15 roadmap); no rubric editing here.
+
+**Demo-vs-real boundary:** *reliable on-ramp* = bundled seeded example transcripts (`src/data/examples/`), parse + score deterministically (Fake scorer offline, Opus when keyed). *Real* = paste/upload of arbitrary transcript text. **Persistence boundary:** with `DATABASE_URL` set, calls persist to **Neon** (`NeonCallStore`); unset, they persist to a process-local `MemoryCallStore` so the loop still works and `verify.sh` stays green — uploads survive within the session, and seeded calls are always present either way.
+
+**Touched files/interfaces:**
+- `src/domain/store.ts` *(new)* — `StoredCall { meta, evaluation, transcript }`.
+- `src/domain/ports.ts` — add `CallStore { list(userId): Promise<StoredCall[]>; get(userId, callId): Promise<StoredCall|null>; save(userId, call): Promise<void> }`.
+- `lib/ingest/parse.mjs` *(new, pure)* — the tolerant transcript parser, mirrored out of `src/lib/ingest.ts` (which now imports it) so ingestion is zero-dep testable.
+- `src/infrastructure/neon-call-store.ts` *(new)* — `@neondatabase/serverless`; bootstraps its tables on first use (`CREATE TABLE IF NOT EXISTS`); rows keyed by `user_id`.
+- `src/infrastructure/memory-call-store.ts` *(new)* — wraps pure `lib/store/in-memory.mjs` (ownership-scoped Map).
+- `src/infrastructure/composition.ts` — `buildCallStore()` (Neon if `DATABASE_URL` else memory) + `storageMode()`.
+- `src/data/examples/*.txt` *(new)* — seeded example transcripts (discovery + demo), replaceable.
+- `src/app/api/calls/route.ts` *(new)* — `GET` lists the session user's calls (seeded ∪ stored); `POST` ingests {example id | raw text + meta} → score → `save`.
+- `src/app/calls/new/page.tsx` + `src/components/upload-transcript.tsx` *(new)* — pick-an-example / paste / upload UI.
+
+**End-to-end verification:** fixture test on the pure layers — each seeded example parses to ≥8 segments all carrying a numeric timestamp; the `in-memory` store round-trips `save → list → get` and **enforces ownership** (user A never sees user B's call). Live (manual, PENDING): pasting a transcript produces a scored call that shows in the call list and is drillable.
+
+## 21. Feature 3 — Auth-ready Session + home menu
+
+**What:** the app gets a **Session** abstraction and a **home menu**. The Session identifies the current user/team; calls and progress are scoped to that user (via the `CallStore`). A **home-menu hub** is the landing surface on arrival/login: the user chooses where to go via **destination cards for every other app section** (Score a call, Progress, Team, Playbook), with their **uploaded calls and the "drill your weakest skill" CTA surfaced inline** on the hub — instead of being dropped into one screen. (Every nav destination in the sidebar/bottom-bar is reachable from the hub.) Real **Auth0** login is **scaffolded** (env documented, Session port ready for an `Auth0SessionGateway`), with a **seeded-team fallback** so the demo never depends on a live login.
+
+**Who:** every user (the menu); the operator story (auth-owned data) is made obvious without a live tenant.
+
+**Non-goals (this batch):** the `@auth0/nextjs-auth0` SDK is **not** wired yet (chosen: auth-ready abstraction only); no real OAuth round-trip; no per-team RBAC.
+
+**Demo-vs-real boundary:** *demo* = `SeededSessionGateway` returns a stable demo user/team (the seeded team), so everything works with no login — this is the protected fallback. *Real (next step)* = drop in `Auth0SessionGateway` behind the same port once `AUTH0_*` env is set; nothing else changes. The home menu is fully real now.
+
+**Touched files/interfaces:**
+- `src/domain/session.ts` *(new)* — `Session { userId, displayName, teamId, isAuthenticated }`.
+- `src/domain/ports.ts` — add `SessionGateway { current(): Promise<Session> }`.
+- `src/infrastructure/seeded-session.ts` *(new)* — `SeededSessionGateway` (the demo user/team). `Auth0SessionGateway` is a documented TODO stub, not built.
+- `src/infrastructure/composition.ts` — `buildSession()` (+ `authMode()` mirroring `scoringMode()`); seeded unless `AUTH0_*` present.
+- `.env.example` — `AUTH0_DOMAIN/CLIENT_ID/CLIENT_SECRET/SECRET` + `APP_BASE_URL`, with the fallback note.
+- `src/components/home-menu.tsx` *(new)* + `src/app/page.tsx` — `/` becomes the home-menu hub (identity from Session + nav cards + the headline "drill your weakest skill" CTA; existing rep-home call list folds in).
+
+**End-to-end verification:** fixture/structural test — `SeededSessionGateway` returns a stable, well-formed `Session` (non-empty `userId`/`teamId`); `authMode()` is `"seeded"` when `AUTH0_*` is unset (the fallback holds). Live (manual): `/` shows the home menu with every nav destination; the app is fully usable with no login.
+
+## 22. Feature 4 — TeamView organized by the rubric
+
+**What:** the team view is restructured around a clear hierarchy — **call type → the rubric for that call type → people**. It first answers *"how is the team doing on this call type against its rubric?"* (per-rubric-item team averages, in rubric order with weights), then lets the manager drill into *"how is each person doing on each metric?"* (per-rep scores per item). The **agentic coaching action is the hero**: an Opus-synthesized read of *who needs what* with a one-tap **"assign a drill"** that routes that rep into the contextualized drill (§19) for the team's highest-leverage gap — so the screen reads as **coaching, not a dashboard**.
+
+**Who:** the sales leader/manager (primarily on desktop, per §18).
+
+**Non-goals:** not a BI dashboard; no historical team trend charts (rep trends live in Progress); no real assignment notifications (the "assign" is an in-app routing affordance).
+
+**Demo-vs-real boundary:** *real* = Opus synthesizes the coaching action from the team stats. *Demo/offline* = `FakeTeamCoach` returns a deterministic action computed from the seeded stats, so the hero renders with no key. The team-gap target is **deterministic in both paths** (`lib/team/select.mjs`), so "assign a drill" always points at the right skill.
+
+**Touched files/interfaces:**
+- `src/domain/team.ts` *(new)* — `TeamCoachingAction { callType, headline, recommendations: { repId, repName, skill, itemId, why, drillCallId? }[] }`.
+- `src/domain/ports.ts` — add `TeamCoachGateway { action(callType, stats): Promise<TeamCoachingAction> }`.
+- `lib/team/select.mjs` *(new, pure)* — `selectTeamGap(stats)` = `max((5 − avg) × weight)` (deterministic tie-break), the single source of truth for the team gap / assigned-drill target; imported by the view and the adapter, asserted by the test.
+- `src/infrastructure/anthropic-team-coach.ts` *(new)* + `FakeTeamCoach` (in `fake-adapters.ts`).
+- `src/infrastructure/composition.ts` — `buildTeamCoach()`.
+- `src/app/api/team/coach/route.ts` *(new)* — returns the `TeamCoachingAction` for a call type.
+- `src/components/team-view.tsx` — restructured to the call-type → rubric → people hierarchy with the coaching action as hero; "assign a drill" links to `/call/{drillCallId}/drill`.
+- `src/data/seed.ts` — reuse `teamStats`; expose per-rep-per-item latest scores for the people drill-down.
+
+**End-to-end verification:** fixture test — `selectTeamGap(seededStats)` equals the expected max-leverage item, and a `FakeTeamCoach` action's assigned-drill target **equals `selectTeamGap`** (the coaching action never assigns the wrong skill), with every recommendation naming a rep + a skill. Qualitative (agent-graded rubric, §RUBRIC F4-Q): the view leads with coaching (who needs what + assign), not a metrics grid. Live (manual): switching call type re-derives the hierarchy and the coaching action; "assign a drill" opens that rep's contextualized drill.
+
+## 23. Batch-2 verification summary
+
+`scripts/verify.sh` is extended to run **all** `test/*.test.mjs` (not just the scorer), so the new pure-layer assertions (anti-telegraph, ingest/parse, store ownership, team-gap selection, seeded session) gate "done" with no human. Qualitative criteria (F1-Q, F4-Q) are graded by the Stage-3 reviewer subagent against the small rubrics in `RUBRIC.md`. The existing scoring/citation gates (§13, RUBRIC B–E) are unchanged and must stay green.

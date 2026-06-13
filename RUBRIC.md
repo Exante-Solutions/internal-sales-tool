@@ -84,6 +84,58 @@ The grader is only useful if a *bad* score is rejected. These prove it.
 
 ---
 
+# Part II — Batch 2 acceptance (Features 0–4)
+
+Each feature has **one machine assertion that fails loudly when unmet** (encoded in `test/features.test.mjs`, run by `verify.sh`), plus a qualitative **rubric** an agent grades where the criterion is taste, not arithmetic. SPEC.md §18–§23 is the source. **Meta-invariant:** `git diff` on `src/domain/coaching.ts` and `lib/scoring/grade.mjs` is empty — the Evaluation write model did not change.
+
+## F0. Responsive — mobile **and** desktop
+
+| ID | Assertion | How graded | Status |
+|----|-----------|-----------|--------|
+| F0-1 | At ≥1280px the nav is a left **sidebar** and the team view renders multi-column; at 375px the bottom nav + single column are intact (A2 still holds). | Manual on `VERIFY_URL` (phone + desktop viewport) | PENDING |
+| F0-2 | The shell is **responsive, not phone-locked**: `app-nav.tsx` contains both a mobile branch and a `lg:` desktop branch, and `layout.tsx` no longer hard-locks the content shell to `max-w-md`. | `verify.sh` → `responsive` (grep structural check) | PENDING |
+| F0-M | Meta: `coaching.ts` + `grade.mjs` write model unchanged. | `verify.sh` → `write-model-unchanged` (git diff empty) | PENDING |
+
+## F1. Contextualized drills — coach prep, no telegraphing
+
+| ID | Assertion | How graded | Status |
+|----|-----------|-----------|--------|
+| F1-1 | A coach briefing carries a `situation`, `the_move`, and an `opener`. | test: *"briefing has the coaching-prep shape"* | PENDING |
+| F1-2 | The prospect **`opener` never names the drilled skill** — `mentionsSkill(opener, skill) === false` (no telegraphing). | test: *"opener does not telegraph the skill"* | PENDING |
+| F1-3 | The gate fails loudly: an opener that **does** name the skill is rejected by `mentionsSkill`. | test: *"rejects a telegraphing opener"* | PENDING |
+| F1-4 | (Live) Tapping a weakness shows the coach prep (briefing + 1 follow-up), then the roleplay opens in character. | Manual on `VERIFY_URL` | PENDING |
+
+**F1-Q (agent-graded rubric — the prep reads as real coaching).** Grade the generated briefing + opener PASS only if **all** hold: (a) the briefing speaks like a sales leader debriefing a specific call (references what happened), not a metric readout; (b) it names exactly **one** move to make; (c) the prospect opener is a natural greeting + a little context that **creates a situation** where the skill matters; (d) the opener does **not** name the skill or the rubric. Any miss → FAIL with the reason.
+
+## F2. Live call ingestion — seeded files + paste/upload, persisted & owned
+
+| ID | Assertion | How graded | Status |
+|----|-----------|-----------|--------|
+| F2-1 | Every seeded example transcript parses to **≥8 segments**, each with a numeric `ts` and a speaker. | test: *"seeded examples parse to grounded segments"* | PENDING |
+| F2-2 | The `CallStore` round-trips: `save → list → get` returns the saved call. | test: *"call store round-trips a saved call"* | PENDING |
+| F2-3 | The gate fails loudly on ownership: user A's `list`/`get` **never** returns user B's call. | test: *"call store enforces per-user ownership"* | PENDING |
+| F2-4 | (Live) Pasting/uploading a transcript yields a scored call that appears in the call list and is drillable. | Manual on `VERIFY_URL` | PENDING |
+
+## F3. Auth-ready Session + home menu
+
+| ID | Assertion | How graded | Status |
+|----|-----------|-----------|--------|
+| F3-1 | `SeededSessionGateway.current()` returns a well-formed `Session` (non-empty `userId` **and** `teamId`). | test: *"seeded session is well-formed"* | PENDING |
+| F3-2 | The demo fallback holds: with `AUTH0_*` unset, `authMode()` is `"seeded"` (a missing tenant can't break the demo). | test: *"auth falls back to seeded when unconfigured"* | PENDING |
+| F3-3 | (Live) `/` shows the home menu with every nav destination; the app is fully usable with no login. | Manual on `VERIFY_URL` | PENDING |
+
+## F4. TeamView organized by the rubric
+
+| ID | Assertion | How graded | Status |
+|----|-----------|-----------|--------|
+| F4-1 | `selectTeamGap(seededStats)` equals the expected highest-leverage item `max((5 − avg) × weight)` (deterministic). | test: *"team gap is the highest-leverage rubric item"* | PENDING |
+| F4-2 | A `FakeTeamCoach` action's **assigned-drill target equals `selectTeamGap`** (never assigns the wrong skill), and every recommendation names a rep + a skill. | test: *"team coaching action assigns the right skill"* | PENDING |
+| F4-3 | (Live) Switching call type re-derives call type → rubric → people; "assign a drill" opens that rep's contextualized drill. | Manual on `VERIFY_URL` | PENDING |
+
+**F4-Q (agent-graded rubric — coaching, not a dashboard).** Grade the team view PASS only if: (a) the **first** thing the eye lands on is the coaching action (who needs what + an assign-a-drill CTA), above the metrics; (b) the per-rubric-item breakdown is present and in rubric order with weights; (c) drilling into a rubric item reveals per-person scores; (d) it does not read as an undifferentiated BI grid. Any miss → FAIL.
+
+---
+
 ## Current state (2026-06-13)
 
 The **scoring grader and its gate are implemented and green** (sections B, C, D, E — the

@@ -1,0 +1,15 @@
+[00:00] Rep: Good to see you again, Marcus. Last time you told me your claims team was drowning in manual eligibility checks — about 30 hours a week across the group. I built today around exactly that.
+[00:16] Prospect: Yeah, that number's only gotten worse.
+[00:22] Rep: So let me show you how the eligibility queue works. When a claim lands, the system auto-checks the payer in real time — here, watch this one resolve.
+[00:38] Prospect: Okay, and what if the payer isn't in your network?
+[00:44] Rep: Great question — it routes to a manual review lane, but only the exceptions, so your team stops touching the 80% that clear automatically.
+[01:03] Rep: Is that how it happens today, or is your team checking every single one?
+[01:10] Prospect: Every single one right now. So this would cut most of that.
+[01:24] Rep: Exactly. Tying it back to your 30 hours — most teams your size recover around two-thirds of that. For you that's roughly 20 hours a week back.
+[01:41] Prospect: That's meaningful.
+[01:47] Rep: Let me show you the reporting view your VP would see each month.
+[02:05] Prospect: This looks good. What about pricing?
+[02:11] Rep: We'll get there in a bit — I want to make sure the workflow fits first. One thing I'd flag: rollout usually takes a sprint, so timing matters if you want this before Q1 close.
+[02:30] Prospect: Understood.
+[02:35] Rep: Let's get your VP and the claims lead on a call next week to walk the rollout plan — does Thursday work?
+[02:46] Prospect: I'll get it on the calendar.

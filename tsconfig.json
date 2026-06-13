@@ -16,7 +16,13 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
-      "@scoring": ["./lib/scoring/grade.mjs"]
+      "@scoring": ["./lib/scoring/grade.mjs"],
+      "@ingest": ["./lib/ingest/parse.mjs"],
+      "@telegraph": ["./lib/coaching/telegraph.mjs"],
+      "@team-select": ["./lib/team/select.mjs"],
+      "@team-action": ["./lib/team/action.mjs"],
+      "@store": ["./lib/store/in-memory.mjs"],
+      "@auth-session": ["./lib/auth/session.mjs"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
