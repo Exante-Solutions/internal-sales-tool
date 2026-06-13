@@ -22,7 +22,8 @@
       "@team-select": ["./lib/team/select.mjs"],
       "@team-action": ["./lib/team/action.mjs"],
       "@store": ["./lib/store/in-memory.mjs"],
-      "@auth-session": ["./lib/auth/session.mjs"]
+      "@auth-session": ["./lib/auth/session.mjs"],
+      "@tour-steps": ["./lib/tour/steps.mjs"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

@@ -60,7 +60,24 @@ every gateway so the whole app runs offline with no keys.
 - Gate: F4-1 (gap = highest-leverage item), F4-2 (assigned drill targets the gap,
   worst rep first). Qualitative: F4-Q.
 
-## Adversarial review (6 confirmed findings, all fixed)
+## Feature 5 — Guided tour / first-run onboarding
+- A mobile-first **guided tour** = persistent coach bubble (step x/N + caption +
+  Back/Next/Skip) that navigates the **real** loop screens and glow-rings the
+  element under discussion. Walks: welcome → score → cited moment → highest-
+  leverage gap → coach prep+drill → re-score → team assign-a-drill. Captions
+  match the 1-minute Loom voiceover.
+- Auto-starts on first visit (localStorage flag), replayable via "Take the tour"
+  on the home menu; routed through the **seeded** discovery call so it needs no
+  keys/DB/webhook — built for screen-record + voiceover.
+- New: `lib/tour/steps.mjs` (pure, ordered steps — single source of truth),
+  `src/components/tour/{tour-provider,tour-bubble,tour-spotlight}.tsx`; `TourProvider`
+  wraps the app in `layout.tsx`; `data-tour` anchors on the real elements
+  (eval-view, coach-prep, delta-card, team-view, home-menu).
+- Gate: F5-1 (steps cover the loop in demo order + team step), F5-2 (every step
+  well-formed and routes to a real page — typo'd route fails loudly). Qualitative:
+  F5-Q (bubble + ring legible/correct at 375px). No domain/write-model change.
+
+## Batch-2 adversarial review (6 confirmed findings, all fixed)
 A parallel review workflow (one reviewer per feature + arch/spec, each finding
 adversarially re-verified) confirmed 6 issues; all resolved:
 - **F4 (critical):** "assign a drill" drilled the rep's *personal* weakest item,

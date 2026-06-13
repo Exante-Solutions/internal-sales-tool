@@ -507,3 +507,32 @@ Declared app constants (model id, hackathon metadata) live in `src/config.ts`. T
 ## 23. Batch-2 verification summary
 
 `scripts/verify.sh` is extended to run **all** `test/*.test.mjs` (not just the scorer), so the new pure-layer assertions (anti-telegraph, ingest/parse, store ownership, team-gap selection, seeded session) gate "done" with no human. Qualitative criteria (F1-Q, F4-Q) are graded by the Stage-3 reviewer subagent against the small rubrics in `RUBRIC.md`. The existing scoring/citation gates (§13, RUBRIC B–E) are unchanged and must stay green.
+
+## 24. Feature 5 — Guided tour / first-run onboarding
+
+**What:** a simple, mobile-first **guided tour** that walks a first-time user through what CoachLoop does and its core features, **on the real screens**, in the same order as the 1-minute demo. It is a persistent **coach bubble** at the bottom of the screen (step *x* of *N*, a one-line caption, Back / Next / Skip) that **navigates between the real pages** and puts a **soft glow ring** on the element being described. It walks the closed loop end-to-end and ends on the team view's *assign-a-drill* action:
+
+1. **Welcome** (home) — the loop in one line.
+2. **Score** (seeded call) — the /100 + band.
+3. **Cited moment** (seeded call) — tap a scorecard item → transcript jumps to the quote.
+4. **Highest-leverage gap** (seeded call) — the flagged weakness → drill CTA.
+5. **Coach prep + drill** (drill page) — the AI prospect re-creates the moment without telegraphing the skill.
+6. **Re-score** (drill page) — the before→after delta; the loop closes.
+7. **Team: assign a drill** (team view) — a manager assigns the right drill to the right rep.
+
+**Who:** a first-time user on a phone (the onboarding case), and — its primary purpose right now — the **demo recording**: the author screen-records the tour, accelerates the UI, and does a voiceover so it fits in ~60s. The tour's captions are written to match that voiceover.
+
+**Non-goals:** not a feature walkthrough of *every* screen (ingestion/progress are reachable but not in the tour — scoped to the loop + team); does not auto-run the live voice drill or fabricate a re-score (the user runs the real drill mid-tour — the bubble persists and they advance when ready); no analytics/step-tracking backend; no per-user server state (a `localStorage` "seen" flag only).
+
+**Demo-vs-real boundary:** fully real UI. The tour routes through the **seeded** discovery call (`call-northwind-disco`) — the zero-dependency path — so it works with no keys, no DB, and no live webhook. It **auto-starts on first visit** (a `localStorage` flag) and is **replayable** from a "Take the tour" control on the home menu (so a clean recording = clear the flag + reload).
+
+**Touched files/interfaces (additive — no domain or write-model change):**
+- `lib/tour/steps.mjs` *(new, pure)* — `TOUR_STEPS` (ordered: welcome → score → cite → weakest → drill → rescore → team) + `TOUR_ROUTES`. The single source of truth the test grades.
+- `src/components/tour/tour-provider.tsx` *(new, client)* — step state + `localStorage` first-run flag + `useRouter` navigation; exposes `useTour()` (`start/next/back/skip`). Mounted once in `layout.tsx`, wrapping the app, so it survives route changes.
+- `src/components/tour/tour-bubble.tsx` *(new)* — the persistent bottom coach bubble (mobile) / floating card (desktop).
+- `src/components/tour/tour-spotlight.tsx` *(new)* — finds `[data-tour="<target>"]` on the current page, scrolls it into view, draws a non-blocking glow ring (degrades to caption-only if the target isn't present, e.g. the delta before a drill is run).
+- `src/app/layout.tsx` — wrap children in `<TourProvider>`.
+- `data-tour` anchors added to existing elements: `home-loop` (home menu), `call-score` + `scorecard` + `weakest-skill` (`eval-view.tsx`), `coach-prep` (`coach-prep.tsx`), `rescore-delta` (`delta-card.tsx`), `assign-drill` (`team-view.tsx`).
+- `src/components/home-menu.tsx` — a "Take the tour" control calling `useTour().start()`.
+
+**End-to-end verification:** fixture test (`test/features.test.mjs`) asserts `TOUR_STEPS` is well-formed and **covers the loop in demo order** — `score` → `cite` → `weakest` → `drill` → `rescore` appear in that relative order, a `team` step is present, the first step is the home route, every step has a non-empty `title`/`body`/`target`, and every `path` is in `TOUR_ROUTES` (a typo'd route fails loudly). Qualitative (agent-graded, F5-Q): on a 375px viewport the bubble + glow ring read clearly and the tour escorts through the real loop screens. Live (manual): first visit auto-starts the tour; Next walks home → call → drill → team with the right element highlighted at each stop; "Take the tour" replays it.

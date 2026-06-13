@@ -134,6 +134,16 @@ Each feature has **one machine assertion that fails loudly when unmet** (encoded
 
 **F4-Q (agent-graded rubric — coaching, not a dashboard).** Grade the team view PASS only if: (a) the **first** thing the eye lands on is the coaching action (who needs what + an assign-a-drill CTA), above the metrics; (b) the per-rubric-item breakdown is present and in rubric order with weights; (c) drilling into a rubric item reveals per-person scores; (d) it does not read as an undifferentiated BI grid. Any miss → FAIL.
 
+## F5. Guided tour / first-run onboarding
+
+| ID | Assertion | How graded | Status |
+|----|-----------|-----------|--------|
+| F5-1 | The tour covers the loop in demo order: `score` → `cite` → `weakest` → `drill` → `rescore` appear in that relative order, and a `team` step is present; the first step is the home route. | test: *"tour steps cover the loop in demo order"* | PENDING |
+| F5-2 | Every tour step is well-formed: non-empty `id`/`title`/`body`/`target`, and every `path` is one of `TOUR_ROUTES` (a typo'd route fails loudly). | test: *"every tour step is well-formed and routes to a real page"* | PENDING |
+| F5-3 | (Live) First visit auto-starts the tour; Back/Next walks home → call → drill → team with the right element glowing at each stop; "Take the tour" replays it; the seeded path needs no keys/DB. | Manual on `VERIFY_URL` (375px viewport) | PENDING |
+
+**F5-Q (agent-graded rubric — onboarding reads clearly on a phone).** Grade PASS only if: (a) the coach bubble (step x/N + caption + Back/Next/Skip) is legible and thumb-reachable at 375px; (b) the glow ring lands on the element the caption talks about (or degrades to caption-only without breaking) and does not block tapping it; (c) the captions match the loop story (score → cite → drill → re-score → team) and read like a guided tour, not raw UI labels. Any miss → FAIL.
+
 ---
 
 ## Current state (2026-06-13)

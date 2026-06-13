@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Upload, LineChart, Users, BookOpen, ChevronRight, Zap } from "lucide-react";
+import { Upload, LineChart, Users, BookOpen, ChevronRight, Zap, PlayCircle } from "lucide-react";
 import type { Session } from "@/domain/session";
 import type { StoredCallMeta } from "@/domain/store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RepHome } from "@/components/rep-home";
+import { useTour } from "@/components/tour/tour-provider";
 
 /**
  * Home menu (Feature 3) — the landing hub the user sees on arrival/login. Pick
@@ -24,6 +25,7 @@ const destinations = [
 
 export function HomeMenu({ session }: { session: Session }) {
   const [uploaded, setUploaded] = useState<StoredCallMeta[]>([]);
+  const tour = useTour();
 
   useEffect(() => {
     fetch("/api/calls")
@@ -34,10 +36,18 @@ export function HomeMenu({ session }: { session: Session }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-amber-400" />
-          <h1 className="text-2xl font-bold">CoachLoop</h1>
+      <header className="flex flex-col gap-2" data-tour="home-loop">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-amber-400" />
+            <h1 className="text-2xl font-bold">CoachLoop</h1>
+          </div>
+          <button
+            onClick={() => tour?.start()}
+            className="flex items-center gap-1.5 rounded-full border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/10"
+          >
+            <PlayCircle className="h-3.5 w-3.5" /> Take the tour
+          </button>
         </div>
         <p className="text-sm text-neutral-400">
           Welcome, {session.displayName}.{" "}

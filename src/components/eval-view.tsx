@@ -30,7 +30,7 @@ export function EvalView({ evaluation, transcript }: { evaluation: Evaluation; t
   return (
     <div className="flex flex-col gap-5">
       {/* Headline + score */}
-      <Card>
+      <Card data-tour="call-score">
         <CardContent className="flex flex-col items-center gap-3 pt-4 text-center">
           <ScoreRing score={evaluation.score_100} band={evaluation.band} />
           <Badge variant={evaluation.band}>{bandLabel[evaluation.band]}</Badge>
@@ -40,7 +40,7 @@ export function EvalView({ evaluation, transcript }: { evaluation: Evaluation; t
       </Card>
 
       {/* The one coaching theme → drill */}
-      <Card className="border-amber-500/30 bg-amber-500/5">
+      <Card data-tour="weakest-skill" className="border-amber-500/30 bg-amber-500/5">
         <CardContent className="flex flex-col gap-3 pt-4">
           <div className="flex items-center gap-2 text-amber-300">
             <Target className="h-4 w-4" />
@@ -62,7 +62,7 @@ export function EvalView({ evaluation, transcript }: { evaluation: Evaluation; t
       {/* Scorecard — tap an item to jump the transcript */}
       <div>
         <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Scorecard</h2>
-        <Card>
+        <Card data-tour="scorecard">
           <ul className="divide-y divide-neutral-800">
             {evaluation.items.map((item) => (
               <li key={item.rubric_item_id}>

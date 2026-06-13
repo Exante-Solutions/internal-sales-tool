@@ -18,6 +18,7 @@ import { createInMemoryStore } from "../lib/store/in-memory.mjs";
 import { selectTeamGap } from "../lib/team/select.mjs";
 import { buildRecommendations } from "../lib/team/action.mjs";
 import { SEEDED_SESSION, authMode } from "../lib/auth/session.mjs";
+import { TOUR_STEPS, TOUR_ROUTES } from "../lib/tour/steps.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const readData = (p) => readFileSync(join(here, "..", "src", "data", p), "utf8");
@@ -125,5 +126,34 @@ test("F4-2: the coaching action assigns the right skill, worst rep first", () =>
     assert.equal(r.itemId, gap.itemId, "every rec must target the team gap item");
     assert.ok(r.skill === gap.name, "every rec must name the gap skill");
     assert.ok(r.repName && r.repName.length > 0, "every rec must name a rep");
+  }
+});
+
+// ── F5. Guided tour / first-run onboarding ───────────────────────────────────
+
+test("F5-1: tour steps cover the loop in demo order", () => {
+  const idx = (id) => TOUR_STEPS.findIndex((s) => s.id === id);
+  const loop = ["score", "cite", "weakest", "drill", "rescore"];
+  let prev = -1;
+  for (const id of loop) {
+    const i = idx(id);
+    assert.ok(i > -1, `tour missing the "${id}" step`);
+    assert.ok(i > prev, `step "${id}" is out of demo order`);
+    prev = i;
+  }
+  assert.ok(idx("team") > -1, "tour must include the team assign-a-drill step");
+  assert.equal(TOUR_STEPS[0].path, "/", "the tour must start on the home route");
+});
+
+test("F5-2: every tour step is well-formed and routes to a real page", () => {
+  assert.ok(TOUR_STEPS.length >= 6, "expected at least the 6 loop+team steps");
+  const seen = new Set();
+  for (const s of TOUR_STEPS) {
+    for (const key of ["id", "title", "body", "target"]) {
+      assert.ok(typeof s[key] === "string" && s[key].trim().length > 0, `step ${s.id}: ${key} missing`);
+    }
+    assert.ok(!seen.has(s.id), `duplicate step id ${s.id}`);
+    seen.add(s.id);
+    assert.ok(TOUR_ROUTES.includes(s.path), `step ${s.id} routes to unknown path ${s.path}`);
   }
 });
