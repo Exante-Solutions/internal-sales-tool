@@ -1,0 +1,24 @@
+{
+  "callId": "call-northwind-disco",
+  "callType": "discovery",
+  "prospect": "Northwind Manufacturing",
+  "contact": "Sam Reyes",
+  "contactRole": "VP Finance",
+  "segments": [
+    { "ts": 0, "speaker": "Rep", "text": "Thanks for hopping on. I figured we'd start with a quick agenda — I'll ask about your current AR process, then we can see if there's a fit. Does that work?" },
+    { "ts": 12, "speaker": "Prospect", "text": "Sounds good, yeah." },
+    { "ts": 20, "speaker": "Rep", "text": "So tell me about how you handle collections today." },
+    { "ts": 35, "speaker": "Prospect", "text": "It's mostly manual. My team chases invoices over email." },
+    { "ts": 50, "speaker": "Rep", "text": "How much is sitting in over-60 right now?" },
+    { "ts": 62, "speaker": "Prospect", "text": "Honestly it's a problem, it's a lot to keep track of." },
+    { "ts": 78, "speaker": "Rep", "text": "Who else would be involved in a decision like this?" },
+    { "ts": 90, "speaker": "Prospect", "text": "I'd loop in our controller, Dana." },
+    { "ts": 105, "speaker": "Rep", "text": "Has Dana looked at tools like this before?" },
+    { "ts": 118, "speaker": "Prospect", "text": "Yeah, Dana's been pushing for this. She's frustrated with the current process." },
+    { "ts": 135, "speaker": "Rep", "text": "Walk me through the last time you bought finance software." },
+    { "ts": 150, "speaker": "Prospect", "text": "Uh, I think it was just me and finance." },
+    { "ts": 168, "speaker": "Rep", "text": "If this stays manual another six months, what does that cost you?" },
+    { "ts": 182, "speaker": "Prospect", "text": "I don't know, hard to say." },
+    { "ts": 200, "speaker": "Rep", "text": "Let's lock Thursday at 2pm with you and Dana to review the over-60 breakdown." }
+  ]
+}

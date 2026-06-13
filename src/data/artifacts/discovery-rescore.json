@@ -1,0 +1,11 @@
+{
+  "call_id": "call-northwind-disco",
+  "drilled_item_id": 3,
+  "skill": "Pain quantified in $ or days",
+  "weight": 20,
+  "before_1_5": 1,
+  "after_1_5": 4,
+  "delta_points_100": 12,
+  "cite_quote": "about $2.1M is sitting over 60 days right now",
+  "rationale": "In the drill the rep anchored a reference range, asked an impact question, and Sam conceded a hard dollar figure on over-60 AR."
+}

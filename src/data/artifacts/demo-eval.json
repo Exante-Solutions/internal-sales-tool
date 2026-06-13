@@ -1,0 +1,22 @@
+{
+  "call_id": "call-northwind-demo",
+  "call_type": "demo",
+  "rubric_id": "demo-v1",
+  "score_100": 65,
+  "band": "needs_work",
+  "headline": "Strong open anchored to discovery, then it drifted into a feature tour and ended on a soft 'I'll send the deck'.",
+  "deal_vs_process_note": "The buyer is engaged and pulling for value ('which of these actually moves my DSO?') — this is a real deal with a weak close, not a dead one. Lock a dated next step tied to their numbers and the demo converts.",
+  "weakest_item_id": 9,
+  "coaching_theme": "Close on a dated commitment, not a deck. When Sam said the value needs to be 'tied to our numbers,' the move was: 'Let's put 30 minutes on the calendar Thursday with Dana to model this against your over-60 figures.' Replace 'reconnect' with a date and a name.",
+  "items": [
+    { "rubric_item_id": 1, "name": "Anchored to prior discovery", "weight": 20, "score_1_5": 5, "cite_ts_seconds": 0, "cite_quote": "chasing invoices over email", "rationale": "Opened by quoting the buyer's exact discovery pain and Dana's frustration." },
+    { "rubric_item_id": 2, "name": "Tell-Show-Tell structure", "weight": 15, "score_1_5": 4, "cite_ts_seconds": 40, "cite_quote": "Context: this is your over-60 bucket", "rationale": "Clean Context→Capability→Impact arc on the first capability." },
+    { "rubric_item_id": 3, "name": "Customized data (logo, realistic numbers)", "weight": 10, "score_1_5": 3, "cite_ts_seconds": 40, "cite_quote": "this is your over-60 bucket", "rationale": "Used the buyer's bucket but no logo or realistic prospect numbers on screen." },
+    { "rubric_item_id": 4, "name": "Interactive checkpoints (every 5–7 min)", "weight": 10, "score_1_5": 4, "cite_ts_seconds": 95, "cite_quote": "Is this how your team triages today", "rationale": "Good checkpoint that surfaced a real workflow insight." },
+    { "rubric_item_id": 5, "name": "ROI moment tied to buyer-named outcome", "weight": 15, "score_1_5": 3, "cite_ts_seconds": 195, "cite_quote": "Most teams pull DSO down a week or two", "rationale": "ROI was vendor-generic ('most teams'), not tied to a buyer-stated number — caps at 3." },
+    { "rubric_item_id": 6, "name": "Objection invitation (proactive)", "weight": 10, "score_1_5": 2, "cite_ts_seconds": 175, "cite_quote": "Which of these actually moves my DSO?", "rationale": "Objection was buyer-initiated; rep never proactively invited one." },
+    { "rubric_item_id": 7, "name": "Pricing timing (40–49 min, 3–4 mentions)", "weight": 5, "score_1_5": 1, "cite_ts_seconds": 240, "cite_quote": "I'll send the deck over", "rationale": "Pricing never raised at any point in the call." },
+    { "rubric_item_id": 8, "name": "Talk ratio 55–65% rep", "weight": 5, "score_1_5": 3, "cite_ts_seconds": 130, "cite_quote": "Let me show you the dashboard", "rationale": "Rep-led as expected for a demo, with one feature-dump stretch." },
+    { "rubric_item_id": 9, "name": "Firm future commit", "weight": 10, "score_1_5": 1, "cite_ts_seconds": 240, "cite_quote": "I'll send the deck over", "rationale": "Ended on 'send the deck' and 'reconnect' — no date, no attendees, no commit." }
+  ]
+}

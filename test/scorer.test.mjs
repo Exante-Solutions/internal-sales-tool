@@ -67,6 +67,39 @@ test("re-score is scoped to the drilled skill with a correct before/after delta"
   assert.ok(rescore.delta_points_100 > 0, "expected the drill to show a positive gain");
 });
 
+// ── Duplicate timestamps: a real quote in a SHADOWED segment must ground ────
+// Two utterances can share a second (raw paste / Circleback MM:SS). A ts->text
+// map is last-wins and would shadow the first segment, falsely rejecting a real
+// citation as "hallucinated". The grader must check every segment at that ts.
+
+const dupTsTranscript = {
+  segments: [
+    { ts: 12, speaker: "Rep", text: "So what's the cost of doing nothing here?" },
+    { ts: 12, speaker: "Prospect", text: "Honestly about 40 hours a month of FTE time." },
+  ],
+};
+const dupTsEval = {
+  score_100: 60,
+  band: "needs_work",
+  weakest_item_id: 1,
+  items: [
+    { rubric_item_id: 1, weight: 100, score_1_5: 3, cite_ts_seconds: 12, cite_quote: "cost of doing nothing" },
+  ],
+};
+
+test("grounds a real quote from the FIRST segment when two segments share a timestamp", () => {
+  const { ok, errors } = validateEvaluation(dupTsEval, dupTsTranscript);
+  assert.equal(ok, true, `unexpected errors:\n  - ${errors.join("\n  - ")}`);
+});
+
+test("still rejects a quote absent from every segment at a shared timestamp", () => {
+  const bad = structuredClone(dupTsEval);
+  bad.items[0].cite_quote = "a line nobody said at twelve seconds";
+  const { ok, errors } = validateEvaluation(bad, dupTsTranscript);
+  assert.equal(ok, false);
+  assert.ok(errors.some((e) => /hallucinated|not found/i.test(e)), errors.join("; "));
+});
+
 // ── Fails loudly: each mutation must be REJECTED ────────────────────────────
 
 test("rejects a score with a missing timestamp", () => {

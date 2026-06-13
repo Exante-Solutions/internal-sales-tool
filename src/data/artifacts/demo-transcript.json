@@ -1,0 +1,20 @@
+{
+  "callId": "call-northwind-demo",
+  "callType": "demo",
+  "prospect": "Northwind Manufacturing",
+  "contact": "Sam Reyes",
+  "contactRole": "VP Finance",
+  "segments": [
+    { "ts": 0, "speaker": "Rep", "text": "Last time you mentioned chasing invoices over email and that Dana's frustrated with the manual process. I built today's demo around exactly that." },
+    { "ts": 25, "speaker": "Prospect", "text": "Great, yeah, that's the pain." },
+    { "ts": 40, "speaker": "Rep", "text": "So here's the collections workspace. Context: this is your over-60 bucket. Capability: it auto-prioritizes by risk. Impact: your team stops guessing who to chase first." },
+    { "ts": 80, "speaker": "Prospect", "text": "Okay, that's interesting." },
+    { "ts": 95, "speaker": "Rep", "text": "Is this how your team triages today, or is it more first-come-first-served?" },
+    { "ts": 110, "speaker": "Prospect", "text": "Honestly it's whoever shouts loudest. So this would help." },
+    { "ts": 130, "speaker": "Rep", "text": "Let me show you the dashboard. And then we have reporting, and exports, and the audit log, and reminders, and templates." },
+    { "ts": 175, "speaker": "Prospect", "text": "That's a lot. Which of these actually moves my DSO?" },
+    { "ts": 195, "speaker": "Rep", "text": "Right — the prioritization plus automated reminders. Most teams pull DSO down a week or two." },
+    { "ts": 220, "speaker": "Prospect", "text": "We'd want to see that tied to our numbers." },
+    { "ts": 240, "speaker": "Rep", "text": "Totally. I'll send the deck over and we can find time to reconnect." }
+  ]
+}
