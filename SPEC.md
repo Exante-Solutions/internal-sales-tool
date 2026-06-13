@@ -97,7 +97,7 @@ All screens are designed phone-first; the team view is the one that also reads w
 
 1. **Rep home** — pick rep (seeded switcher, no login), see recent calls + the headline "drill your weakest skill" CTA.
 2. **Call evaluation** — headline score + band + honest process-vs-deal interpretation; the filled scorecard with **tap-to-jump timestamped rationale per item**; what-went-well / what-needs-work; the one coaching theme.
-3. **Drill** — a single tap requests mic + starts the realtime voice session; live transcript; the AI prospect re-stages the moment; "end drill" or auto-end on recovery.
+3. **Drill** — a single tap requests mic + starts the realtime voice session; an ElevenLabs **`LiveWaveform`** visualizes the rep's mic in real time (plus an agent-state orb for when the prospect is speaking/thinking); live transcript; the AI prospect re-stages the moment; "end drill" or auto-end on recovery.
 4. **Re-score / result** — before→after on the drilled skill, points added to the call, and the new cited moments from the drill.
 5. **Rep progress** — line/area of each rubric item's score over time; the loop's whole point made visible.
 6. **Team view** — for each call type, the team's average per rubric item + who's strongest/weakest per skill; surfaces the team-wide gap to drill.
@@ -130,6 +130,7 @@ All screens are designed phone-first; the team view is the one that also reads w
 - **Anthropic Opus 4.8** (`claude-opus-4-8`) — all heavy reasoning: classification, the 4-pass eval, coaching synthesis, re-score. This is the creative-Opus-use story.
 - **ElevenLabs Agents** — realtime voice drill. **Claude is the brain via ElevenLabs' native LLM dropdown** (`claude-haiku-4-5` for latency / `claude-sonnet-4-5` for sharper roleplay) — no custom shim. Front-end `@elevenlabs/react` (WebRTC). A single Next.js route mints the signed URL with the server-held `xi-api-key`.
 - **Tailwind CSS + shadcn/ui** — the component layer. shadcn/ui (Radix primitives + Tailwind, copy-in components, zero runtime dependency) gives a lightweight, well-established, elegant modern look out of the box, so we compose pre-built primitives (Button, Card, Sheet, Tabs, Drawer, Dialog, Progress, Badge) rather than hand-authoring class soup. Initialized via `npx shadcn@latest init`; components land in `src/components/ui/`. **Design is mobile-first** (thumb-reachable actions, bottom sheets/drawers for the drill, single-column cards) and reflows cleanly to desktop for the manager's team view. Icons via `lucide-react`.
+- **ElevenLabs UI** (`ui.elevenlabs.io`) — purpose-built voice components for the drill's visual representation, distributed as a **shadcn registry** (same CLI, same `@/lib/utils`, drops into `src/components/ui/` — no new toolchain). Add per-component, e.g. `npx shadcn@latest add https://ui.elevenlabs.io/r/live-waveform.json`. We use **`LiveWaveform`** (real-time mic-driven waveform — props `active` / `processing` / `barColor` / `height` / `mode: "scrolling"|"static"` / `onStreamReady` / `onStreamEnd`) as the speaking indicator, alongside the conversation/orb components for agent state. This makes the live voice piece *look* live without hand-building canvas audio viz.
 
 **Keys (fork-and-run):** the only secrets needed to run the whole app are `ANTHROPIC_API_KEY` and `ELEVENLABS_API_KEY` (plus `ELEVENLABS_AGENT_ID` and `DATABASE_URL`). Anyone can fork the repo, drop these into `.env`, and run the full loop on their own accounts — see §17. Keys are server-side only; the ElevenLabs LLM cost (Claude drill turns) passes through ElevenLabs credits. Per-user in-app key entry (BYOK without editing `.env`) is roadmap (§15).
 
@@ -149,6 +150,8 @@ All screens are designed phone-first; the team view is the one that also reads w
 **End conditions.** (a) Recovery — the prospect concedes/agrees once the rep hits the skill bar; (b) cap of N turns (default 6) so a struggling rep isn't stuck; (c) manual "end drill." On end, the conversation transcript is pulled and sent to `/api/rescore`.
 
 **Re-score.** Opus 4.8 scores the rep's drill performance on the **single drilled item's** 1-5 anchors, returns the new score + 1-2 cited drill moments + a one-line "what changed." UI shows before→after and points added to the call score.
+
+**Visual representation.** The conversation is rendered with **ElevenLabs UI** components (shadcn registry — see §6): `LiveWaveform` bound to the active mic stream (`onStreamReady` from the session) for the rep's speaking indicator, an agent orb/visualizer for the prospect's turn, and a running transcript. The waveform's `active`/`processing` props track session state so the UI reads as genuinely live during the demo.
 
 **iOS/mobile constraints (must handle):** request mic via `getUserMedia` inside the same user gesture that starts the session; pin `@elevenlabs/react ≥ 1.6` (earlier versions swallowed an iOS Safari WebRTC error); keep the agent `first_message` empty or trigger first audio off the tap (iOS can mute an autoplayed first message). Show a clear "we need your mic, here's why" state before the tap.
 
