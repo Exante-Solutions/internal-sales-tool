@@ -103,26 +103,43 @@ export class SyncContactEmails {
 
     const persisted: EmailMessage[] = [];
     const now = this.clock.nowIso();
+    // This person's existing email timeline, indexed by the message it points to,
+    // so the per-person projection stays idempotent across re-syncs (J5).
+    const existingTimeline = await this.timeline.list("person", person.id);
+    const projectedRefIds = new Set(
+      existingTimeline.filter((e) => e.kind === "email").map((e) => e.refId),
+    );
     for (const m of deduped) {
-      // Idempotent: a Message-ID already stored is not re-persisted (J5).
+      // Dedupe the email_message ROW globally by RFC Message-ID (J2/J3/J5): a
+      // Message-ID already stored — possibly for ANOTHER contact on a shared
+      // thread — is not re-persisted. We still project it onto THIS person's
+      // timeline below, since the sync matched their address.
       const already = await this.emails.findByRfcMessageId(m.rfcMessageId);
-      if (already) continue;
+      let message: EmailMessage;
+      if (already) {
+        message = already;
+      } else {
+        message = {
+          id: this.ids.next(),
+          personId: person.id,
+          rfcMessageId: m.rfcMessageId,
+          threadId: m.threadId ?? null,
+          fromEmail: m.fromEmail,
+          toEmails: m.toEmails,
+          subject: m.subject,
+          snippet: m.snippet,
+          occurredAt: m.occurredAt,
+          syncedByUserId: m.mailboxUserId,
+        };
+        await this.emails.upsert(message);
+        persisted.push(message);
+      }
 
-      const message: EmailMessage = {
-        id: this.ids.next(),
-        personId: person.id,
-        rfcMessageId: m.rfcMessageId,
-        threadId: m.threadId ?? null,
-        fromEmail: m.fromEmail,
-        toEmails: m.toEmails,
-        subject: m.subject,
-        snippet: m.snippet,
-        occurredAt: m.occurredAt,
-        syncedByUserId: m.mailboxUserId,
-      };
-      await this.emails.upsert(message);
-
-      // Persist permanently to the person's append-only timeline (J1).
+      // Per-person timeline projection (J1) runs even when the message row
+      // already existed for someone else — but only once per person+message,
+      // keeping the append-only timeline free of duplicates on re-sync.
+      if (projectedRefIds.has(message.id)) continue;
+      projectedRefIds.add(message.id);
       const entry: TimelineEntry = {
         id: this.ids.next(),
         subjectType: "person",
@@ -135,8 +152,6 @@ export class SyncContactEmails {
         createdAt: now,
       };
       await this.timeline.append(entry);
-
-      persisted.push(message);
     }
 
     return { persisted, seen: deduped.length };
