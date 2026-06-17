@@ -9,9 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getJson, fmtDate, type ConversationListItem } from "@/lib/discovery-api";
 
+// Params that mark the Unassigned-inbox view — mirrors lib/nav/active.mjs and
+// the conversations API, which treat both `inbox` and `unassigned` as the
+// inbox filter.
+const INBOX_PARAMS = ["inbox", "unassigned"];
+
 export function ConversationsList() {
   const params = useSearchParams();
-  const inbox = params.get("inbox") === "1";
+  const inbox = INBOX_PARAMS.some((p) => params.has(p));
   const [items, setItems] = useState<ConversationListItem[]>([]);
 
   useEffect(() => {

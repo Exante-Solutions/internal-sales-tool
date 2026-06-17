@@ -57,7 +57,19 @@ export function InitiativeDetail({ id }: { id: string }) {
     if (t?.targets) setData((prev) => ({ ...prev, targets: t.targets }));
   }
   useEffect(() => {
-    load();
+    // Reset state so the previous initiative doesn't flash, and ignore stale
+    // responses if `id` changes before the fetches resolve (out-of-order guard).
+    let active = true;
+    setData({});
+    (async () => {
+      const d = await getJson<DetailResponse>(`/api/initiatives/${id}`);
+      if (active && d) setData(d);
+      const t = await getJson<{ targets?: TargetView[] }>(`/api/initiatives/${id}/targets`);
+      if (active && t?.targets) setData((prev) => ({ ...prev, targets: t.targets }));
+    })();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 

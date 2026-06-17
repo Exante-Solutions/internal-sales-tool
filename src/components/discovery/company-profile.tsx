@@ -44,9 +44,16 @@ export function CompanyProfile({ id }: { id: string }) {
   const [data, setData] = useState<CompanyResponse>({});
 
   useEffect(() => {
+    // Reset state so the previous company doesn't flash, and ignore stale
+    // responses if `id` changes before the fetch resolves (out-of-order guard).
+    let active = true;
+    setData({});
     getJson<CompanyResponse>(`/api/companies/${id}`).then((d) => {
-      if (d) setData(d);
+      if (active && d) setData(d);
     });
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   const company = data.company;

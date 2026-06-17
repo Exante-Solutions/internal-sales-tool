@@ -81,11 +81,25 @@ export function ConversationDetail({ id }: { id: string }) {
     const d = await getJson<ConversationDetailResponse>(`/api/conversations/${id}`);
     if (d) {
       setData(d);
-      if (d.coachingEvaluation) setEvaluation(d.coachingEvaluation);
+      setEvaluation(d.coachingEvaluation ?? null);
     }
   }
   useEffect(() => {
-    load();
+    // Reset state so the previous conversation doesn't flash, and ignore stale
+    // responses if `id` changes before the fetch resolves (out-of-order guard).
+    let active = true;
+    setData({});
+    setEvaluation(null);
+    (async () => {
+      const d = await getJson<ConversationDetailResponse>(`/api/conversations/${id}`);
+      if (active && d) {
+        setData(d);
+        setEvaluation(d.coachingEvaluation ?? null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 

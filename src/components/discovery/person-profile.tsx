@@ -69,7 +69,19 @@ export function PersonProfile({ id }: { id: string }) {
     if (d) setData(d);
   }
   useEffect(() => {
-    load();
+    // Reset state (and timeline filters) so the previous person doesn't flash,
+    // and ignore stale responses if `id` changes before the fetch resolves.
+    let active = true;
+    setData({});
+    setEmailFilter("all");
+    setCompanyFilter("all");
+    (async () => {
+      const d = await getJson<PersonResponse>(`/api/people/${id}`);
+      if (active && d) setData(d);
+    })();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
