@@ -17,8 +17,8 @@ export function ProgressView() {
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-2xl font-bold">Progress</h1>
-        <p className="text-sm text-neutral-400">Watch each skill climb across calls — the loop’s whole point.</p>
+        <h1 className="text-2xl font-semibold text-[var(--bone)]">Progress</h1>
+        <p className="text-sm text-[var(--bone-dim)]">Watch each skill climb across calls - the loop’s whole point.</p>
       </header>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -27,8 +27,10 @@ export function ProgressView() {
             key={r.id}
             onClick={() => setRepId(r.id)}
             className={cn(
-              "shrink-0 rounded-full border px-3 py-1.5 text-sm",
-              r.id === repId ? "border-white bg-white text-black" : "border-neutral-700 text-neutral-300",
+              "shrink-0 rounded-[var(--radius)] border px-3 py-1.5 text-sm transition-colors",
+              r.id === repId
+                ? "border-[var(--signal)] bg-[var(--panel-2)] text-[var(--bone)]"
+                : "border-[var(--grid)] text-[var(--bone-dim)] hover:text-[var(--bone)]",
             )}
           >
             {r.name.split(" ")[0]}
@@ -42,8 +44,10 @@ export function ProgressView() {
             key={ct}
             onClick={() => setCallType(ct)}
             className={cn(
-              "flex-1 rounded-lg border py-2 text-sm capitalize",
-              ct === callType ? "border-white bg-neutral-800 text-white" : "border-neutral-800 text-neutral-400",
+              "flex-1 rounded-[var(--radius)] border py-2 text-sm capitalize transition-colors",
+              ct === callType
+                ? "border-[var(--signal)] bg-[var(--panel-2)] text-[var(--bone)]"
+                : "border-[var(--grid)] text-[var(--bone-dim)] hover:text-[var(--bone)]",
             )}
           >
             {ct}
@@ -61,8 +65,8 @@ export function ProgressView() {
             <Card key={it.id}>
               <CardContent className="flex items-center gap-3 pt-4">
                 <div className="flex-1">
-                  <p className="text-sm text-neutral-100">{it.name}</p>
-                  <p className="text-xs text-neutral-500">weight {it.weight}</p>
+                  <p className="text-sm text-[var(--bone)]">{it.name}</p>
+                  <p className="font-[var(--font-mono)] text-xs text-[var(--bone-dim)]">weight {it.weight}</p>
                 </div>
                 <Sparkline points={series} />
                 <div className="w-12 text-right">
@@ -70,7 +74,11 @@ export function ProgressView() {
                   <span
                     className={cn(
                       "block text-[11px] tabular-nums",
-                      delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-neutral-500",
+                      delta > 0
+                        ? "text-[var(--positive)]"
+                        : delta < 0
+                          ? "text-[var(--attention)]"
+                          : "text-[var(--bone-dim)]",
                     )}
                   >
                     {delta > 0 ? "+" : ""}

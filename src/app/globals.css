@@ -1,10 +1,146 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
   color-scheme: dark;
+
+  --void: #06080a;
+  --panel: #0e1317;
+  --panel-2: #131a1f;
+  --grid: #1e272d;
+  --bone: #e9edea;
+  --bone-dim: #8a9590;
+  --signal: #4da3ff;
+  --signal-deep: #1f4e8c;
+  --positive: #46d08a;
+  --attention: #e8c547;
+
+  --bg-page: var(--void);
+  --surface-raised: var(--panel);
+  --surface-hover: var(--panel-2);
+  --border-hairline: var(--grid);
+  --text-primary: var(--bone);
+  --text-secondary: var(--bone-dim);
+  --text-accent: var(--signal);
+  --text-link: var(--signal);
+  --status-proven: var(--positive);
+  --status-exploratory: var(--attention);
+  --focus-ring: var(--signal);
+
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --font-serif: "Newsreader", Georgia, serif;
+  --font-ui: var(--font-display);
+  --font-data: var(--font-mono);
+  --font-prose: var(--font-serif);
+
+  --text-eyebrow: 11px;
+  --text-caption: 12px;
+  --text-body: 14px;
+  --text-ui: 15px;
+  --text-prose: 19px;
+  --text-h3: 19px;
+  --text-h2: 30px;
+  --text-display: 46px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --track-eyebrow: 0.08em;
+  --track-chrome: 0.14em;
+  --track-title: 0.22em;
+  --leading-tight: 1.24;
+  --leading-snug: 1.3;
+  --leading-prose: 1.6;
+  --leading-data: 1.7;
+  --measure-prose: 62ch;
+
+  --s1: 8px;
+  --s2: 16px;
+  --s3: 24px;
+  --s4: 32px;
+  --s5: 48px;
+  --radius: 2px;
+  --radius-0: 0;
+  --border-width: 1px;
+  --border: 1px solid var(--grid);
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 0.18s;
+  --dur-base: 0.32s;
+  --dur-slow: 0.7s;
+  --dur-hero: 1.4s;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--void);
 }
 
 body {
-  background: #0a0a0a;
-  color: #ededed;
+  min-height: 100%;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    var(--void);
+  background-position: center;
+  background-size: 64px 64px;
+  color: var(--bone);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--signal) 35%, transparent);
+  color: var(--bone);
+}
+
+:focus-visible {
+  outline: 1px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.eyebrow {
+  color: var(--bone-dim);
+  font-family: var(--font-display);
+  font-size: var(--text-eyebrow);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+}
+
+.serif {
+  font-family: var(--font-serif);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
 }

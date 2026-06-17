@@ -32,7 +32,7 @@ Next.js App Router (`src/app`). The data flow is a single loop:
 - `@/*` path alias maps to `src/*` (see `tsconfig.json`).
 - Secrets only via env. `.env` is gitignored; `.env.example` documents required vars. Fork-and-run requires four: `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `DATABASE_URL`. Use fail-fast accessors (`getAnthropicApiKey()` pattern) — never read `process.env` deep in a handler.
 - When using Claude models, default to the latest capable model — currently Opus 4.8 (`claude-opus-4-8`), already set in `src/config.ts`.
-- UI: **Tailwind + shadcn/ui** (components in `src/components/ui/`, added via `npx shadcn@latest add <name>`). Compose existing primitives; don't hand-roll class soup. Design mobile-first; icons via `lucide-react`.
+- UI: **Tailwind + local Apparatus primitives** (components in `src/components/ui/`). Compose existing primitives; don't hand-roll class soup. Design mobile-first; use `Glyph` with mono Unicode symbols for app UI instead of adding new `lucide-react` imports. See `DESIGN.md`.
 
 ## How I build (architecture, hackathon-sized)
 
