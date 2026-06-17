@@ -14,6 +14,7 @@ import { z } from "zod";
 import { getServices, buildSession } from "@/infrastructure/composition";
 import { makeNormalizedEmail, InvalidEmailError } from "@/domain/person";
 import type { EmailIdentity } from "@/domain/person";
+import type { TimelineEntry } from "@/domain/profile";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,8 @@ const Patch = z.object({
       label: z.enum(["work", "personal", "former", "other"]).default("work"),
     })
     .optional(),
+  /** A manual note appended to the person's append-only timeline (C5.2). */
+  note: z.string().min(1).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -86,6 +89,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       source: "manual",
     };
     await svc.people.addEmail(person.id, emailIdentity);
+  }
+
+  if (d.note !== undefined) {
+    // Append a manual note to the person's append-only timeline (C5.2). The
+    // timeline is the profile source of truth; the summary is a derived rollup.
+    const now = svc.clock.nowIso();
+    const entry: TimelineEntry = {
+      id: svc.ids.next(),
+      subjectType: "person",
+      subjectId: person.id,
+      kind: "note",
+      refId: null,
+      occurredAt: now,
+      bodyMd: d.note,
+      createdBy: session.userId,
+      createdAt: now,
+    };
+    await svc.timeline.append(entry);
   }
 
   const fresh = await svc.people.get(session.teamId, id);

@@ -75,6 +75,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!conversation) return NextResponse.json({ error: "conversation not found" }, { status: 404 });
 
   const d = parsed.data;
+
+  // IDOR guard (C4.3): the target follow-up must belong to THIS conversation.
+  // Without this a client could change/archive follow-ups on other conversations
+  // by reusing a known id. Include archived so unarchive transitions still match.
+  const followUps = await svc.followUps.listForConversation(id, { includeArchived: true });
+  if (!followUps.some((f) => f.id === d.followUpId)) {
+    return NextResponse.json({ error: "follow-up not found" }, { status: 404 });
+  }
+
   const patch: { status?: "open" | "done"; archivedAt?: string | null } = {};
   if (d.status !== undefined) patch.status = d.status;
   if (d.archive !== undefined) patch.archivedAt = d.archive ? svc.clock.nowIso() : null;

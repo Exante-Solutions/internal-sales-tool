@@ -111,16 +111,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await svc.conversations.save(updated);
   }
 
+  // Field edits are already persisted above. If an analyze pass is requested and
+  // fails, do NOT 500 — that would report failure even though the field edits did
+  // land (C4.5). Surface the analyze failure as a non-fatal `analyzeError` and
+  // still return 200 with the saved conversation.
   let analysis = null;
+  let analyzeError: string | null = null;
   if (d.analyze) {
     try {
       const result = await svc.analyzeConversation.analyze(session, id);
       analysis = result.analysis;
     } catch (err) {
-      return NextResponse.json({ error: err instanceof Error ? err.message : "analyze failed" }, { status: 500 });
+      analyzeError = err instanceof Error ? err.message : "analyze failed";
     }
   }
 
   const fresh = await svc.conversations.get(session.teamId, id);
-  return NextResponse.json({ conversation: fresh, analysis });
+  return NextResponse.json({ conversation: fresh, analysis, analyzeError });
 }

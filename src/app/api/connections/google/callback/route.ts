@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getServices } from "@/infrastructure/composition";
+import { getServices, buildSession } from "@/infrastructure/composition";
 import { googleSecretRef, type GoogleConnection } from "@/domain/connection";
 import { DEFAULT_TEAM_ID } from "@/domain/tenancy";
 
@@ -48,10 +48,23 @@ export async function GET(req: NextRequest) {
   const svc = getServices();
 
   // `state` is the app_user id minted at /start. Verify it resolves so a forged
-  // state can't attach a connection to an unknown user. Fall back to the current
-  // session only if the (legitimate) row exists.
+  // state can't attach a connection to an unknown user.
   const appUser = await svc.appUsers.get(state);
   if (!appUser) return NextResponse.redirect(backTo(req, "error"));
+
+  // OAuth-linking CSRF defense (C4.1): require the browser finishing consent to
+  // be the SAME workspace user named in `state`. Without this an attacker can
+  // start the flow with their own `state`, have a victim complete Google consent,
+  // and attach the victim's mailbox tokens to the attacker's user. The session is
+  // resolved here (not trusted from `state`); a missing/mismatched session is
+  // rejected. /start sets state = session.userId, so the legitimate user matches.
+  let session;
+  try {
+    session = await buildSession().current();
+  } catch {
+    return NextResponse.redirect(backTo(req, "error"));
+  }
+  if (session.userId !== appUser.id) return NextResponse.redirect(backTo(req, "error"));
 
   const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUrl);
 

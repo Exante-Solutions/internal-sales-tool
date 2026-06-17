@@ -16,8 +16,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServices, buildSession, buildCalendarGateway } from "@/infrastructure/composition";
+import { getServices, buildCalendarGateway } from "@/infrastructure/composition";
 import { CalendarProviderAdapter } from "@/infrastructure/calendar/provider-adapter";
+import { DEFAULT_TEAM_ID } from "@/domain/tenancy";
 
 export const runtime = "nodejs";
 
@@ -61,9 +62,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
     );
   }
 
-  const session = await buildSession().current();
+  // Inbound provider POSTs carry no Auth0 session, so we must NOT call
+  // buildSession().current() here — Auth0SessionGateway throws without a session
+  // and legitimate webhooks would fail (C4.2). Resolve the team from the matched
+  // initiative_calendar_link instead: every calendar link (and the data it maps
+  // to) lives under the single shared workspace DEFAULT_TEAM_ID, which is exactly
+  // the scope forCalendarLink uses to find the link → initiative.
   const svc = getServices();
-  const initiativeId = await svc.associateInitiative.forCalendarLink(session.teamId, {
+  const initiativeId = await svc.associateInitiative.forCalendarLink(DEFAULT_TEAM_ID, {
     linkId: event.linkId ?? null,
   });
 

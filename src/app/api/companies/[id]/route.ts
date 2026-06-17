@@ -18,13 +18,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const svc = getServices();
   const company = await svc.companies.get(session.teamId, id);
   if (!company) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const [memberships, members, timeline, summary] = await Promise.all([
+  const [memberships, members, timeline, summary, conversations] = await Promise.all([
     svc.companies.membershipsFor(id),
     svc.people.list(session.teamId, { companyId: id }),
     svc.timeline.list("company", id),
     svc.timeline.getSummary("company", id),
+    // Conversations linked to this company's members via participant snapshots
+    // (companyAtTime). Powers the profile's linked-conversations section (C5.4).
+    svc.conversations.list(session.teamId, { companyAtTime: id }),
   ]);
-  return NextResponse.json({ company, memberships, members, timeline, summary });
+  return NextResponse.json({ company, memberships, members, timeline, summary, conversations });
 }
 
 const Patch = z.object({
