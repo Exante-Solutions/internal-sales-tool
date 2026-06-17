@@ -119,14 +119,42 @@ export function ConversationDetail({ id }: { id: string }) {
   // ── Participants: add (people-picker) / remove (B2) ──────────────────────
   const [addingParticipant, setAddingParticipant] = useState(false);
   const [participantBusy, setParticipantBusy] = useState(false);
+  const [participantError, setParticipantError] = useState("");
 
-  async function addParticipant(personId: string) {
-    if (!personId) return;
+  // Returns true on success so the inline create-new flow can chain the add and
+  // surface a single error if any step fails (3425177916).
+  async function addParticipant(personId: string): Promise<boolean> {
+    if (!personId) return false;
     setParticipantBusy(true);
-    await sendJson(`/api/conversations/${id}/participants`, "POST", { personId });
+    setParticipantError("");
+    const r = await sendJson(`/api/conversations/${id}/participants`, "POST", { personId });
     setParticipantBusy(false);
+    if (!r) {
+      setParticipantError("Could not add the participant. Please try again.");
+      return false;
+    }
     setAddingParticipant(false);
     load();
+    return true;
+  }
+
+  // Create a new person inline, then add them as a participant. Holds the busy
+  // flag across BOTH calls and surfaces an error if either fails — replaces the
+  // earlier fire-and-forget chain that failed silently (3425177916).
+  async function createAndAddParticipant(displayName: string, email?: string) {
+    setParticipantBusy(true);
+    setParticipantError("");
+    const created = await sendJson<{ person?: { id: string } }>("/api/people", "POST", {
+      displayName,
+      email: email ?? `${displayName.trim().toLowerCase().replace(/[^a-z0-9]+/g, ".")}@example.invalid`,
+    });
+    if (!created?.person?.id) {
+      setParticipantBusy(false);
+      setParticipantError("Could not create the person. Please try again.");
+      return;
+    }
+    // addParticipant manages the busy flag for the second leg.
+    await addParticipant(created.person.id);
   }
   async function removeParticipant(personId: string) {
     setParticipantBusy(true);
@@ -274,7 +302,10 @@ export function ConversationDetail({ id }: { id: string }) {
               size="sm"
               variant="ghost"
               disabled={participantBusy}
-              onClick={() => setAddingParticipant((v) => !v)}
+              onClick={() => {
+                setParticipantError("");
+                setAddingParticipant((v) => !v);
+              }}
             >
               <Plus className="h-4 w-4" /> Add
             </Button>
@@ -285,17 +316,17 @@ export function ConversationDetail({ id }: { id: string }) {
           <PeoplePicker
             busy={participantBusy}
             onSelectExisting={(personId) => addParticipant(personId)}
-            onCreateNew={(displayName, email) => {
-              // A participant must be an existing person (snapshot needs a
-              // membership). Create the person first, then add them.
-              sendJson<{ person?: { id: string } }>("/api/people", "POST", {
-                displayName,
-                email: email ?? `${displayName.trim().toLowerCase().replace(/[^a-z0-9]+/g, ".")}@example.invalid`,
-              }).then((r) => {
-                if (r?.person?.id) addParticipant(r.person.id);
-              });
-            }}
+            // A participant must be an existing person (snapshot needs a
+            // membership). Create the person first, then add them — both legs
+            // hold the busy flag and report a single error on failure.
+            onCreateNew={(displayName, email) => createAndAddParticipant(displayName, email)}
           />
+        )}
+
+        {participantError && (
+          <p role="alert" className="px-1 text-sm text-rose-400">
+            {participantError}
+          </p>
         )}
 
         {participants.length === 0 ? (

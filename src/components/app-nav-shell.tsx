@@ -1,14 +1,29 @@
 import { Suspense } from "react";
-import { buildSession } from "@/infrastructure/composition";
+import { authMode, buildSession } from "@/infrastructure/composition";
 import { avatarDataUri, initialsFromEmail } from "@/lib/avatar";
 import { AppNav, AppNavView, type NavUser } from "@/components/app-nav";
 
 /**
+ * True only for the "no Auth0 session" signal thrown by Auth0SessionGateway
+ * before it touches any collaborator. Lets us tell a genuinely signed-out
+ * request apart from a real failure (DB error while provisioning, etc.), which
+ * must surface rather than masquerade as a sign-in prompt.
+ */
+function isMissingSessionError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("no Auth0 session");
+}
+
+/**
  * Server wrapper that resolves the current Session and hands the nav its
  * identity (SPEC §18.3). Rendered in the root layout so every screen shares the
- * same chrome. When there is no session (live Auth0, pre-login) `current()`
- * throws — we still render the nav, just without the identity footer, so the
- * signed-out landing keeps its shell.
+ * same chrome.
+ *
+ * Signed-out handling is CENTRALIZED here (3425177912): in live Auth0 mode a
+ * missing session means the whole workspace is locked, so the shell renders the
+ * sign-in prompt and suppresses the Discovery nav for EVERY screen — not just
+ * Home/Settings. In seeded mode the session always resolves, so the app renders
+ * normally. Any non-missing-session error (e.g. a DB failure while provisioning)
+ * is re-thrown rather than masked as signed-out.
  */
 export async function AppNavShell() {
   let workspaceName = "Discovery Workspace";
@@ -37,8 +52,16 @@ export async function AppNavShell() {
         initials: initialsFromEmail(displayName),
       };
     }
-  } catch {
-    // No session — leave user null; the nav renders without the identity footer.
+  } catch (err) {
+    // In live Auth0 mode a missing session means the workspace is locked: render
+    // NO Discovery nav so signed-out users never see the full chrome (the page
+    // body renders its own sign-in prompt). Re-throw anything that is not a
+    // genuine missing session so real failures aren't masked. In seeded mode the
+    // session always resolves, so a throw here is always a real error → re-throw.
+    if (authMode() === "auth0" && isMissingSessionError(err)) {
+      return null;
+    }
+    throw err;
   }
 
   // AppNav reads useSearchParams() for query-aware active state (B11); a Suspense
