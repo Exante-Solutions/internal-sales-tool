@@ -62,8 +62,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     whatWeLearned: (analysis?.whatWeLearned ?? []).map((f) => f.text),
     signals: (analysis?.signals ?? []).map((s) => s.text),
     nextSteps: analysis?.nextSteps ?? [],
-    reasonMd: analysis?.reasonMd,
-    outcomeMd: analysis?.outcomeMd,
+    // reason/outcome are edited via PATCH and persisted on the CONVERSATION, not
+    // the analysis row (3425141395). Source them from the conversation so manual
+    // edits show; fall back to the analysis values when the conversation field
+    // is empty (e.g. analysis-derived defaults before any manual edit).
+    reasonMd: conversation.reasonMd || analysis?.reasonMd,
+    outcomeMd: conversation.outcomeMd || analysis?.outcomeMd,
   };
 
   return NextResponse.json({

@@ -101,22 +101,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     personId = person.id;
   }
 
-  // The repo upserts on UNIQUE(initiativeId, personId): if a target already
-  // exists it KEEPS the existing row (and its id). Reuse that id so the response
-  // reflects the stored row instead of a freshly minted id that was never saved
-  // (C4.4). A brand-new target gets a fresh id and a 201.
+  // The repo upserts on UNIQUE(initiativeId, personId). If a target already
+  // exists, DO NOT re-add: addTarget would overwrite the stored outreach status
+  // and clear reasonMd with this request's defaults, silently downgrading
+  // progress and wiping notes (3425141392). Return the existing row unchanged
+  // with a 200. Only a genuinely new prospect gets a fresh id, addTarget, and a
+  // 201.
   const existingTargets = await svc.initiatives.listTargets(id);
   const existingTarget = existingTargets.find((t) => t.personId === personId);
+  if (existingTarget) {
+    return NextResponse.json({ target: existingTarget }, { status: 200 });
+  }
 
   const target: InitiativeTarget = {
-    id: existingTarget?.id ?? svc.ids.next(),
+    id: svc.ids.next(),
     initiativeId: id,
     personId,
     status: d.status,
     reasonMd: d.reasonMd,
-    addedBy: existingTarget?.addedBy ?? session.userId,
-    createdAt: existingTarget?.createdAt ?? svc.clock.nowIso(),
+    addedBy: session.userId,
+    createdAt: svc.clock.nowIso(),
   };
   await svc.initiatives.addTarget(target);
-  return NextResponse.json({ target }, { status: existingTarget ? 200 : 201 });
+  return NextResponse.json({ target }, { status: 201 });
 }
