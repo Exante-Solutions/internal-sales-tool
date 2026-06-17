@@ -91,7 +91,14 @@ export class GoogleGmailAdapter implements GmailGateway {
         scope: tokens.scope ?? bundle.scope,
         token_type: tokens.token_type ?? bundle.token_type,
       };
-      void this.secrets.rotate(secretRef, JSON.stringify(next));
+      // Persist asynchronously; a rotate failure must not become an unhandled
+      // rejection that crashes an in-flight sync — log and swallow.
+      void this.secrets.rotate(secretRef, JSON.stringify(next)).catch((err) => {
+        console.error(
+          `[google-gmail-adapter] token rotate failed for secret_ref ${secretRef}`,
+          err,
+        );
+      });
     });
     return google.gmail({ version: "v1", auth: oauth2 });
   }

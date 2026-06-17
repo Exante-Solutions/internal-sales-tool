@@ -43,10 +43,14 @@ export class AddParticipant {
     if (!person) throw new Error(`person not found: ${personId}`);
 
     // The snapshot lib speaks plain objects (emails: string[], memberships[]);
-    // adapt the domain Person at this boundary.
+    // adapt the domain Person at this boundary. A manual add has no call-specific
+    // address, so pass a deterministic preferred email (a verified identity, else
+    // the first) rather than relying on the snapshot's first-email fallback —
+    // which is wrong for multi-identity people.
     const snapshot = participantSnapshot(
       personViewForSnapshot(person),
       conversation.occurredAt,
+      preferredEmailFor(person),
     ) as { emailUsed?: string; companyAtTime: string | null };
 
     return this.conversations.addParticipant(conversationId, {
@@ -56,6 +60,17 @@ export class AddParticipant {
       roleAtTime: roleAt(person, conversation.occurredAt),
     });
   }
+}
+
+/**
+ * Deterministic email for a manual add (no call address to read). Prefer a
+ * verified identity; otherwise the first email. Returns undefined only when the
+ * person has no emails, letting the snapshot fall back harmlessly.
+ */
+function preferredEmailFor(person: Person): string | undefined {
+  const verified = person.emails.find((e) => e.verified);
+  const chosen = verified ?? person.emails[0];
+  return chosen ? (chosen.emailNormalized as unknown as string) : undefined;
 }
 
 /** Domain Person → the plain shape participantSnapshot/membershipAt expect. */

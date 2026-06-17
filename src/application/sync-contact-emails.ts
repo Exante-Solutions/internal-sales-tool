@@ -86,16 +86,26 @@ export class SyncContactEmails {
     const personEmails = person.emails.map((e) => e.emailNormalized as string);
 
     // Pull from every connected mailbox, skipping those whose token is missing.
+    // One mailbox failing (bad token JSON, expired OAuth, Gmail API error) must
+    // not abort the whole sync — isolate each fetch so the others still sync.
     const all: GmailThreadMessage[] = [];
     for (const box of boxes) {
       const token = await this.secrets.get(box.secretRef);
       if (!token) continue; // no usable credential → skip this mailbox (J4).
-      const msgs = await this.gmail.fetchMessagesForEmails(
-        personEmails,
-        box.mailboxUserId,
-        box.secretRef,
-      );
-      all.push(...msgs);
+      try {
+        const msgs = await this.gmail.fetchMessagesForEmails(
+          personEmails,
+          box.mailboxUserId,
+          box.secretRef,
+        );
+        all.push(...msgs);
+      } catch (err) {
+        // Skip this mailbox and keep syncing the rest (J4: degrade, don't abort).
+        console.error(
+          `[sync-contact-emails] mailbox ${box.mailboxUserId} fetch failed; skipping`,
+          err,
+        );
+      }
     }
 
     // Dedupe shared threads across mailboxes by RFC Message-ID (J2/J3).
