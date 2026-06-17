@@ -16,11 +16,11 @@
 
 import Link from "next/link";
 import { Mail, CalendarDays, Mic, Building2, ExternalLink, Check } from "lucide-react";
-import { getServices, buildSession } from "@/infrastructure/composition";
+import { getServices } from "@/infrastructure/composition";
+import { requireSession } from "@/lib/require-session";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SignedOut } from "@/components/signed-out";
 import { SettingsCircleback } from "@/components/settings-circleback";
 import { SettingsWorkspace } from "@/components/settings-workspace";
 import { connectionState } from "../../../lib/settings/connection-state.mjs";
@@ -28,25 +28,10 @@ import { connectionState } from "../../../lib/settings/connection-state.mjs";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * True only for the "no Auth0 session" signal thrown by Auth0SessionGateway
- * before it touches any collaborator — a genuinely signed-out request. Other
- * throws (e.g. a DB/provisioning failure) must NOT be masked as signed-out
- * (3425215480); they re-throw so the error surfaces instead of a login prompt.
- */
-function isMissingSessionError(err: unknown): boolean {
-  return err instanceof Error && err.message.includes("no Auth0 session");
-}
-
 export default async function SettingsPage() {
-  // Live Auth0 mode throws when there's no session — show the signed-out CTA.
-  let session;
-  try {
-    session = await buildSession().current();
-  } catch (err) {
-    if (isMissingSessionError(err)) return <SignedOut />;
-    throw err;
-  }
+  // Resolve the session (live Auth0 mode redirects to /auth/login when absent;
+  // seeded mode always resolves). Provisioning happens in Auth0SessionGateway.
+  const session = await requireSession();
 
   const svc = getServices();
 
