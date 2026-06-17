@@ -28,13 +28,24 @@ import { connectionState } from "../../../lib/settings/connection-state.mjs";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * True only for the "no Auth0 session" signal thrown by Auth0SessionGateway
+ * before it touches any collaborator — a genuinely signed-out request. Other
+ * throws (e.g. a DB/provisioning failure) must NOT be masked as signed-out
+ * (3425215480); they re-throw so the error surfaces instead of a login prompt.
+ */
+function isMissingSessionError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("no Auth0 session");
+}
+
 export default async function SettingsPage() {
   // Live Auth0 mode throws when there's no session — show the signed-out CTA.
   let session;
   try {
     session = await buildSession().current();
-  } catch {
-    return <SignedOut />;
+  } catch (err) {
+    if (isMissingSessionError(err)) return <SignedOut />;
+    throw err;
   }
 
   const svc = getServices();

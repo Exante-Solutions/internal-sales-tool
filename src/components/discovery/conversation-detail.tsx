@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Users, ClipboardList, Sparkles, Loader2, Quote, Target, Plus, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,9 +77,18 @@ export function ConversationDetail({ id }: { id: string }) {
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState("");
 
+  // Tracks the id the component is currently mounted for. A reload (after a
+  // mutation) refetches `${id}` captured when the mutation started; if the user
+  // navigates to another conversation mid-request, the response must be dropped
+  // rather than overwrite the newly-opened entity (3425215484).
+  const currentId = useRef(id);
+  currentId.current = id;
+
   async function load() {
-    const d = await getJson<ConversationDetailResponse>(`/api/conversations/${id}`);
-    if (d) {
+    const reloadId = id;
+    const d = await getJson<ConversationDetailResponse>(`/api/conversations/${reloadId}`);
+    // Ignore the response if we've since navigated to a different conversation.
+    if (d && currentId.current === reloadId) {
       setData(d);
       setEvaluation(d.coachingEvaluation ?? null);
     }

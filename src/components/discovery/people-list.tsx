@@ -16,10 +16,19 @@ export function PeopleList() {
     const url = query.trim()
       ? `/api/people?q=${encodeURIComponent(query.trim())}`
       : "/api/people";
+    // Drop a slow older-query response so it can't replace a newer query's
+    // results: the debounce timer clears on cleanup, but an in-flight fetch
+    // does not — guard it with a per-effect active flag (3425215488).
+    let active = true;
     const t = setTimeout(() => {
-      getJson<{ people?: PersonListItem[] }>(url).then((d) => setPeople(d?.people ?? []));
+      getJson<{ people?: PersonListItem[] }>(url).then((d) => {
+        if (active) setPeople(d?.people ?? []);
+      });
     }, 200);
-    return () => clearTimeout(t);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
   }, [query]);
 
   return (
