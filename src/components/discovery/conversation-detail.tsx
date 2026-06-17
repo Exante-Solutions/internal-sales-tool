@@ -134,9 +134,12 @@ export function ConversationDetail({ id }: { id: string }) {
   // surface a single error if any step fails (3425177916).
   async function addParticipant(personId: string): Promise<boolean> {
     if (!personId) return false;
+    const reqId = id;
     setParticipantBusy(true);
     setParticipantError("");
     const r = await sendJson(`/api/conversations/${id}/participants`, "POST", { personId });
+    // Ignore the result if the user navigated away mid-request (3425263993).
+    if (currentId.current !== reqId) return false;
     setParticipantBusy(false);
     if (!r) {
       setParticipantError("Could not add the participant. Please try again.");
@@ -151,12 +154,15 @@ export function ConversationDetail({ id }: { id: string }) {
   // flag across BOTH calls and surfaces an error if either fails — replaces the
   // earlier fire-and-forget chain that failed silently (3425177916).
   async function createAndAddParticipant(displayName: string, email?: string) {
+    const reqId = id;
     setParticipantBusy(true);
     setParticipantError("");
     const created = await sendJson<{ person?: { id: string } }>("/api/people", "POST", {
       displayName,
       email: email ?? `${displayName.trim().toLowerCase().replace(/[^a-z0-9]+/g, ".")}@example.invalid`,
     });
+    // Drop the result if the user navigated to another conversation (3425263993).
+    if (currentId.current !== reqId) return;
     if (!created?.person?.id) {
       setParticipantBusy(false);
       setParticipantError("Could not create the person. Please try again.");
@@ -166,8 +172,10 @@ export function ConversationDetail({ id }: { id: string }) {
     await addParticipant(created.person.id);
   }
   async function removeParticipant(personId: string) {
+    const reqId = id;
     setParticipantBusy(true);
     await sendJson(`/api/conversations/${id}/participants/${personId}`, "DELETE");
+    if (currentId.current !== reqId) return;
     setParticipantBusy(false);
     load();
   }
@@ -177,9 +185,11 @@ export function ConversationDetail({ id }: { id: string }) {
   const [analyzeError, setAnalyzeError] = useState("");
 
   async function runDiscoveryAnalysis() {
+    const reqId = id;
     setAnalyzing(true);
     setAnalyzeError("");
     const d = await sendJson(`/api/conversations/${id}/analyze`, "POST");
+    if (currentId.current !== reqId) return;
     setAnalyzing(false);
     if (d) load();
     else setAnalyzeError("Could not run discovery analysis.");
@@ -187,25 +197,34 @@ export function ConversationDetail({ id }: { id: string }) {
 
   async function assignInitiative(initiativeId: string) {
     if (!initiativeId) return;
+    const reqId = id;
     setAssigning(true);
     await sendJson(`/api/conversations/${id}/initiatives`, "POST", { initiativeId });
+    if (currentId.current !== reqId) return;
     setAssigning(false);
     load();
   }
   async function removeInitiative(initiativeId: string) {
+    const reqId = id;
     setAssigning(true);
     await sendJson(`/api/conversations/${id}/initiatives`, "DELETE", { initiativeId });
+    if (currentId.current !== reqId) return;
     setAssigning(false);
     load();
   }
 
   async function runPlaybook() {
+    const reqId = id;
     setRunning(true);
     setRunError("");
     const d = await sendJson<{ evaluation?: PlaybookEvaluation }>(
       `/api/conversations/${id}/playbook-check`,
       "POST",
     );
+    // Drop the response if the user navigated to another conversation while the
+    // (potentially slow) check ran, so a stale evaluation can't attach to a
+    // newly-opened conversation (3425263993).
+    if (currentId.current !== reqId) return;
     setRunning(false);
     if (d?.evaluation) setEvaluation(d.evaluation);
     else setRunError("Could not run the playbook check.");

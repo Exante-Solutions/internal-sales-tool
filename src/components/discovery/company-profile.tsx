@@ -66,7 +66,19 @@ export function CompanyProfile({ id }: { id: string }) {
   // The API returns `members` as Person records and a separate `memberships`
   // array. Join them by personId to derive each member's title and current/past
   // status; a member with no matching current membership is treated as past.
-  const membershipByPerson = new Map(memberships.map((m) => [m.personId, m]));
+  //
+  // A person can have multiple memberships at the same company (rehire, role
+  // change). Keying a plain Map by personId lets an arbitrary row win and can
+  // collapse the current/past badge + title to the wrong record. Prefer the
+  // CURRENT membership when one exists; otherwise keep the first encountered so
+  // a later non-current row can't overwrite a chosen current one (3425264007).
+  const membershipByPerson = new Map<string, CompanyMembershipView>();
+  for (const m of memberships) {
+    const existing = membershipByPerson.get(m.personId);
+    if (!existing || (m.isCurrent && !existing.isCurrent)) {
+      membershipByPerson.set(m.personId, m);
+    }
+  }
   const decorated = members.map((m) => {
     const ms = membershipByPerson.get(m.id);
     return { ...m, title: ms?.title ?? null, isCurrent: ms?.isCurrent ?? false };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -64,9 +64,19 @@ export function PersonProfile({ id }: { id: string }) {
   const [emailFilter, setEmailFilter] = useState<string>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
 
+  // Tracks the id the component is currently mounted for. A reload after a
+  // mutation (sync/notes/merge/regenerate) refetches `${id}` captured when the
+  // mutation started; if the user navigates to another person mid-request, the
+  // response must be dropped rather than overwrite the newly-opened profile
+  // (3425263998).
+  const currentId = useRef(id);
+  currentId.current = id;
+
   async function load() {
-    const d = await getJson<PersonResponse>(`/api/people/${id}`);
-    if (d) setData(d);
+    const reloadId = id;
+    const d = await getJson<PersonResponse>(`/api/people/${reloadId}`);
+    // Ignore the response if we've since navigated to a different person.
+    if (d && currentId.current === reloadId) setData(d);
   }
   useEffect(() => {
     // Reset state (and timeline filters) so the previous person doesn't flash,
@@ -113,29 +123,38 @@ export function PersonProfile({ id }: { id: string }) {
   }, [timeline, emailFilter, companyFilter]);
 
   async function syncEmails() {
+    const reqId = id;
     setSyncing(true);
     await sendJson(`/api/people/${id}/sync-emails`, "POST");
+    // Drop the result if the user navigated to another person mid-request.
+    if (currentId.current !== reqId) return;
     setSyncing(false);
     load();
   }
 
   async function regenerate() {
+    const reqId = id;
     setRegenerating(true);
     await sendJson(`/api/profiles/person/${id}/regenerate`, "POST");
+    if (currentId.current !== reqId) return;
     setRegenerating(false);
     load();
   }
 
   async function addNote() {
     if (!note.trim()) return;
+    const reqId = id;
     await sendJson(`/api/people/${id}`, "PATCH", { note: note.trim() });
+    if (currentId.current !== reqId) return;
     setNote("");
     setAddingNote(false);
     load();
   }
 
   async function confirmMerge(otherId: string) {
+    const reqId = id;
     await sendJson(`/api/people/${id}/merge`, "POST", { absorbedId: otherId });
+    if (currentId.current !== reqId) return;
     load();
   }
 

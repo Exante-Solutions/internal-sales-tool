@@ -36,17 +36,26 @@ export function PeoplePicker({
   const [searching, setSearching] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Per-query token: only the latest query's response may render. A slower
+  // earlier request resolving after a newer one must not overwrite the newer
+  // results (3425264002).
+  const queryToken = useRef(0);
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     const q = query.trim();
     if (q.length < 1) {
+      // Invalidate any in-flight request so its late response is ignored.
+      queryToken.current += 1;
       setResults([]);
       return;
     }
+    const token = ++queryToken.current;
     timer.current = setTimeout(async () => {
       setSearching(true);
       const d = await getJson<{ people?: PersonListItem[] }>(`/api/people?q=${encodeURIComponent(q)}`);
+      // Ignore this response if a newer query has since been issued.
+      if (queryToken.current !== token) return;
       setSearching(false);
       setResults(d?.people ?? []);
     }, 200);
