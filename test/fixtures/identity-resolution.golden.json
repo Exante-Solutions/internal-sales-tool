@@ -1,0 +1,19 @@
+{
+  "_comment": "Golden baseline for lib/identity/resolve.mjs (RUBRIC C1/C2). The test runs resolveIdentity over `cases` against `people` and diffs the result against `expected`. Known email → attach; unknown → provisional + suggestion; no silent merge.",
+  "people": [
+    { "id": "p1", "displayName": "John Doe", "emails": ["john@acme.com"] },
+    { "id": "p2", "displayName": "Jane Roe", "emails": ["jane@globex.com"] }
+  ],
+  "cases": [
+    { "email": "john@acme.com" },
+    { "email": "JOHN@ACME.COM" },
+    { "email": "john.personal@gmail.com", "hintName": "John Doe" },
+    { "email": "brand.new@nowhere.com" }
+  ],
+  "expected": [
+    { "email": "john@acme.com", "status": "known", "personId": "p1", "suggested": [] },
+    { "email": "JOHN@ACME.COM", "status": "known", "personId": "p1", "suggested": [] },
+    { "email": "john.personal@gmail.com", "status": "provisional", "personId": null, "suggested": ["p1"] },
+    { "email": "brand.new@nowhere.com", "status": "provisional", "personId": null, "suggested": [] }
+  ]
+}
