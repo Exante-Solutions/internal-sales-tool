@@ -31,6 +31,8 @@ interface RowReport {
   outcome: RowOutcome;
   personId?: string;
   reason?: string;
+  /** Emails NOT attached because they already belong to a different person (§4.3). */
+  skippedEmails?: string[];
 }
 
 export async function POST(req: NextRequest) {
@@ -122,8 +124,23 @@ export async function POST(req: NextRequest) {
     if (existing) {
       // UPDATE: attach any new emails this row carries to the survivor.
       const known = new Set(existing.emails.map((e) => e.emailNormalized as string));
+      const attached: string[] = [];
+      const skippedEmails: string[] = [];
       for (const n of normalized) {
-        if (known.has(n)) continue;
+        if (known.has(n)) {
+          // Already owned by THIS survivor — nothing to add, report as attached.
+          attached.push(n);
+          continue;
+        }
+        // people.addEmail uses ON CONFLICT DO NOTHING on the globally-unique
+        // email_normalized, so adding an address owned by ANOTHER person silently
+        // no-ops. Pre-check ownership (mirrors PATCH /api/people/[id]) and skip
+        // conflicts instead of falsely reporting them as added (§4.3).
+        const owner = await svc.people.findByEmail(session.teamId, n);
+        if (owner && owner.id !== existing.id) {
+          skippedEmails.push(n);
+          continue;
+        }
         const identity: EmailIdentity = {
           id: svc.ids.next(),
           personId: existing.id,
@@ -134,6 +151,7 @@ export async function POST(req: NextRequest) {
         };
         await svc.people.addEmail(existing.id, identity);
         known.add(n);
+        attached.push(n);
       }
       // Attach the row's company as a current membership if absent (find-or-create).
       if (row.company) {
@@ -142,9 +160,16 @@ export async function POST(req: NextRequest) {
       updated++;
       reports.push({
         displayName: row.displayName,
-        emails: normalized,
+        // Only emails actually owned by this survivor; conflicts are reported separately.
+        emails: attached,
         outcome: "updated",
         personId: existing.id,
+        ...(skippedEmails.length > 0
+          ? {
+              skippedEmails,
+              reason: "some emails belong to another person and were not added",
+            }
+          : {}),
       });
       continue;
     }
