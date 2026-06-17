@@ -66,7 +66,7 @@ export function TeamView() {
 
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start">
       {/* HERO: the agentic coaching action (who needs what + assign a drill) */}
-      <Card data-tour="assign-drill" className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent">
+      <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent">
         <CardContent className="flex flex-col gap-3 pt-4">
           <div className="flex items-center gap-2 text-amber-300">
             <Sparkles className="h-4 w-4" />

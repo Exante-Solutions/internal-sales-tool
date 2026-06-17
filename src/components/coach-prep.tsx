@@ -88,7 +88,7 @@ export function CoachPrep({
   }
 
   return (
-    <div className="flex flex-col gap-4" data-tour="coach-prep">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <MessageCircle className="h-4 w-4 text-amber-300" />
         <Badge variant="needs_work">Coaching session</Badge>
