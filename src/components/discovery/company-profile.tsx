@@ -1,0 +1,193 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Building2, Users, Clock, Sparkles, MessagesSquare } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { PageBack } from "@/components/discovery/page-back";
+import { cn } from "@/lib/utils";
+import {
+  getJson,
+  fmtDate,
+  type TimelineEntryView,
+  type ProfileSummaryView,
+  type ConversationListItem,
+} from "@/lib/discovery-api";
+
+interface CompanyMemberView {
+  personId: string;
+  personName?: string;
+  title?: string | null;
+  isCurrent?: boolean;
+}
+interface CompanyResponse {
+  company?: { id: string; name: string; domain?: string | null };
+  members?: CompanyMemberView[];
+  timeline?: TimelineEntryView[];
+  summary?: ProfileSummaryView | null;
+  conversations?: ConversationListItem[];
+}
+
+const KIND_DOT: Record<string, string> = {
+  conversation: "bg-sky-400",
+  email: "bg-violet-400",
+  calendar: "bg-amber-400",
+  note: "bg-neutral-400",
+};
+
+export function CompanyProfile({ id }: { id: string }) {
+  const [data, setData] = useState<CompanyResponse>({});
+
+  useEffect(() => {
+    getJson<CompanyResponse>(`/api/companies/${id}`).then((d) => {
+      if (d) setData(d);
+    });
+  }, [id]);
+
+  const company = data.company;
+  const members = data.members ?? [];
+  const timeline = data.timeline ?? [];
+  const summary = data.summary;
+  const conversations = data.conversations ?? [];
+
+  const current = members.filter((m) => m.isCurrent);
+  const past = members.filter((m) => !m.isCurrent);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <PageBack href="/people" label="People" />
+
+      <header className="flex items-center gap-2">
+        <Building2 className="h-5 w-5 text-sky-400" />
+        <h1 className="text-2xl font-bold">{company?.name ?? "Company"}</h1>
+        {company?.domain && (
+          <Badge variant="neutral" className="text-[10px]">{company.domain}</Badge>
+        )}
+      </header>
+
+      {/* People — current + past members */}
+      <section data-region="people-view" className="flex flex-col gap-2">
+        <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <Users className="h-3.5 w-3.5" /> People
+        </h2>
+        {members.length === 0 ? (
+          <Card data-empty-state="company-people">
+            <CardContent className="flex flex-col items-start gap-1 pt-4">
+              <p className="text-sm font-medium text-neutral-200">No members on file</p>
+              <p className="text-xs text-neutral-500">
+                People are linked to this company through their memberships. They
+                appear here once a profile lists this company — current or past.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <ul className="divide-y divide-neutral-800">
+              {[...current, ...past].map((m) => (
+                <li key={m.personId} className="flex items-center gap-2 p-3">
+                  <Link
+                    href={`/people/${m.personId}`}
+                    className="min-w-0 flex-1 truncate text-sm text-neutral-100 hover:underline"
+                  >
+                    {m.personName ?? m.personId}
+                    {m.title ? <span className="text-neutral-500"> · {m.title}</span> : null}
+                  </Link>
+                  <Badge variant={m.isCurrent ? "strong" : "neutral"} className="shrink-0 text-[10px]">
+                    {m.isCurrent ? "current" : "past"}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </section>
+
+      {/* AI summary — aggregated rollup */}
+      <section data-region="ai-summary" className="flex flex-col gap-2">
+        <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <Sparkles className="h-3.5 w-3.5" /> AI summary
+        </h2>
+        <Card>
+          <CardContent className="pt-4">
+            {summary?.summaryMd ? (
+              <p className="whitespace-pre-line text-sm leading-relaxed text-neutral-300">
+                {summary.summaryMd}
+              </p>
+            ) : (
+              <p className="text-sm text-neutral-400">No summary yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Linked conversations across members */}
+      <section data-region="linked-conversations" className="flex flex-col gap-2">
+        <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <MessagesSquare className="h-3.5 w-3.5" /> Conversations
+        </h2>
+        {conversations.length === 0 ? (
+          <Card>
+            <CardContent className="pt-4 text-sm text-neutral-400">No conversations yet.</CardContent>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {conversations.map((c) => (
+              <Link key={c.id} href={`/conversations/${c.id}`}>
+                <Card className="transition-colors hover:border-neutral-700">
+                  <CardContent className="flex items-center gap-3 pt-4">
+                    <MessagesSquare className="h-4 w-4 shrink-0 text-sky-300" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-neutral-100">{c.title}</p>
+                      <p className="text-xs text-neutral-500">
+                        {c.occurredAt ? fmtDate(c.occurredAt) : ""}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Timeline — aggregated over current + past members (I4) */}
+      <section data-region="timeline" className="flex flex-col gap-2">
+        <h2 className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <Clock className="h-3.5 w-3.5" /> Timeline
+        </h2>
+        {timeline.length === 0 ? (
+          <Card data-empty-state="company-timeline">
+            <CardContent className="flex flex-col items-start gap-1 pt-4">
+              <p className="text-sm font-medium text-neutral-200">No timeline entries yet</p>
+              <p className="text-xs text-neutral-500">
+                This timeline aggregates activity across the company&apos;s
+                current and past members. It fills in as their calls, emails, and
+                notes accrue.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <ul className="divide-y divide-neutral-800">
+              {timeline.map((t) => (
+                <li key={t.id} className="flex items-start gap-3 p-3">
+                  <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", KIND_DOT[t.kind] ?? "bg-neutral-500")} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="neutral" className="text-[10px] capitalize">{t.kind}</Badge>
+                      <span className="text-[11px] text-neutral-600">{fmtDate(t.occurredAt)}</span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-neutral-300">
+                      {t.bodyMd}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}

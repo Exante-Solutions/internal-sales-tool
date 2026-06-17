@@ -1,0 +1,130 @@
+"use client";
+
+/**
+ * People picker (SPEC §18.5, RUBRIC S3). Search people already in the DB and
+ * SELECT one (returns an existing `personId`), or fall through to creating a
+ * new person inline. Used by the initiative prospect-list add-flow; the caller
+ * POSTs the chosen `personId` (or new displayName+email) to
+ * /api/initiatives/[id]/targets.
+ *
+ * Presentation only: debounced GET /api/people?q=… for the candidate set; the
+ * dedupe/identity rules live at the route edge (§4.3).
+ */
+
+import { useEffect, useRef, useState } from "react";
+import { Search, UserPlus, Check } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { getJson, type PersonListItem } from "@/lib/discovery-api";
+
+const inputCls =
+  "h-11 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-neutral-500";
+
+export function PeoplePicker({
+  onSelectExisting,
+  onCreateNew,
+  busy,
+}: {
+  /** Chose an existing person from the DB. */
+  onSelectExisting: (personId: string, name: string) => void;
+  /** Chose to create a new person inline. */
+  onCreateNew: (displayName: string, email?: string) => void;
+  busy?: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PersonListItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    const q = query.trim();
+    if (q.length < 1) {
+      setResults([]);
+      return;
+    }
+    timer.current = setTimeout(async () => {
+      setSearching(true);
+      const d = await getJson<{ people?: PersonListItem[] }>(`/api/people?q=${encodeURIComponent(q)}`);
+      setSearching(false);
+      setResults(d?.people ?? []);
+    }, 200);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [query]);
+
+  const trimmed = query.trim();
+  const exactMatch = results.some(
+    (p) => p.primaryDisplayName.toLowerCase() === trimmed.toLowerCase(),
+  );
+
+  return (
+    <Card data-region="people-picker">
+      <CardContent className="flex flex-col gap-2 pt-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search people, or type a new name…"
+            className={`${inputCls} pl-9`}
+            autoFocus
+          />
+        </div>
+
+        {searching && <p className="px-1 text-xs text-neutral-500">Searching…</p>}
+
+        {results.length > 0 && (
+          <ul className="divide-y divide-neutral-800 rounded-xl border border-neutral-800">
+            {results.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onSelectExisting(p.id, p.primaryDisplayName)}
+                  className="flex w-full items-center gap-3 p-3 text-left hover:bg-neutral-800/60 disabled:opacity-50"
+                >
+                  <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-neutral-100">
+                      {p.primaryDisplayName}
+                    </span>
+                    {p.emails?.[0] && (
+                      <span className="block truncate text-xs text-neutral-500">
+                        {p.emails[0].emailNormalized}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Create-new fall-through when there's no exact existing match. */}
+        {trimmed.length > 0 && !exactMatch && (
+          <div className="flex flex-col gap-2 rounded-xl border border-dashed border-neutral-700 p-3">
+            <p className="flex items-center gap-1.5 text-xs text-neutral-400">
+              <UserPlus className="h-3.5 w-3.5" /> Create a new person
+            </p>
+            <input
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="Email (optional)"
+              className={inputCls}
+            />
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => onCreateNew(trimmed, newEmail.trim() || undefined)}
+            >
+              Add “{trimmed}” as new
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
