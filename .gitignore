@@ -25,3 +25,6 @@ yarn-error.log*
 *.pem
 .vercel
 *.tsbuildinfo
+
+# local-only planning artifacts (specs, rubrics, dev validation scripts)
+/planning
