@@ -25,6 +25,7 @@ import {
   ResourceExistsException,
   ResourceNotFoundException,
 } from "@aws-sdk/client-secrets-manager";
+import { createHash } from "node:crypto";
 import type { SecretStore } from "@/domain/ports";
 
 export class AwsSecretsManagerAdapter implements SecretStore {
@@ -63,13 +64,22 @@ export class AwsSecretsManagerAdapter implements SecretStore {
    * Full secret name = optional prefix + the caller's ref, sanitized to the AWS
    * Secrets Manager name charset (alphanumeric + `-/_+=.@!`). Domain refs like
    * `google/<appUserId>` can carry an Auth0 sub (`auth0|abc`), and `|` is NOT a
-   * legal name char — it would raise ValidationException. We map any disallowed
-   * char to `-`. Idempotent (sanitizing an already-clean name is a no-op), so
-   * put() can store the sanitized name and get() re-derives the same one.
+   * legal name char — it would raise ValidationException.
+   *
+   * Replacing every disallowed char with `-` is lossy: distinct logical refs
+   * that differ only in removed/collapsed chars (e.g. an Auth0 sub's `|` vs a
+   * literal `-`) would sanitize to the SAME name, so one user's OAuth bundle
+   * could overwrite or be read for another. To stay collision-resistant yet
+   * deterministic, we keep the readable sanitized prefix AND append a short
+   * deterministic hash of the ORIGINAL ref. The hash is taken over `ref`, not
+   * the prefixed/sanitized form, so the same logical ref always yields the same
+   * name across get/put/rotate/delete regardless of the configured prefix.
    */
   private nameFor(ref: string): string {
     const full = this.prefix ? `${this.prefix}${ref}` : ref;
-    return full.replace(/[^A-Za-z0-9/_+=.@!-]/g, "-");
+    const sanitized = full.replace(/[^A-Za-z0-9/_+=.@!-]/g, "-");
+    const digest = createHash("sha256").update(ref).digest("hex").slice(0, 10);
+    return `${sanitized}-${digest}`;
   }
 
   /**
