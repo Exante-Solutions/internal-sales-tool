@@ -16,6 +16,7 @@ import { z } from "zod";
 import { getServices, buildSession } from "@/infrastructure/composition";
 import { makeNormalizedEmail, InvalidEmailError } from "@/domain/person";
 import type { Person, EmailIdentity } from "@/domain/person";
+import type { Company, CompanyMembership } from "@/domain/company";
 // Pure parser shared with the unit tests (test/discovery.test.mjs S2 block).
 import { parsePeopleCsv } from "../../../../../lib/people/csv.mjs";
 
@@ -46,6 +47,42 @@ export async function POST(req: NextRequest) {
     emails: string[];
     company?: string;
   }[];
+
+  // Find-or-create the team's company by name (case-insensitive; no email
+  // domain in a CSV row), then attach `personId` as a CURRENT membership unless
+  // one already exists — mirrors the single-create flow in /api/people (SPEC §3,
+  // §8.1). Returns the membership when newly created, else null.
+  async function attachCompany(
+    personId: string,
+    companyName: string,
+    existingMemberships: CompanyMembership[],
+  ): Promise<CompanyMembership | null> {
+    const wanted = companyName.toLowerCase();
+    const companies = await svc.companies.list(session.teamId);
+    let company: Company | undefined = companies.find(
+      (c) => c.name.trim().toLowerCase() === wanted,
+    );
+    if (!company) {
+      company = {
+        id: svc.ids.next(),
+        teamId: session.teamId,
+        name: companyName,
+        createdAt: svc.clock.nowIso(),
+      };
+      await svc.companies.save(company);
+    }
+    if (existingMemberships.some((m) => m.companyId === company!.id)) return null;
+    const membership: CompanyMembership = {
+      id: svc.ids.next(),
+      personId,
+      companyId: company.id,
+      isCurrent: true,
+      startedOn: null,
+      endedOn: null,
+    };
+    await svc.companies.saveMembership(membership);
+    return membership;
+  }
 
   const reports: RowReport[] = [];
   let created = 0;
@@ -98,6 +135,10 @@ export async function POST(req: NextRequest) {
         await svc.people.addEmail(existing.id, identity);
         known.add(n);
       }
+      // Attach the row's company as a current membership if absent (find-or-create).
+      if (row.company) {
+        await attachCompany(existing.id, row.company, existing.memberships);
+      }
       updated++;
       reports.push({
         displayName: row.displayName,
@@ -128,6 +169,11 @@ export async function POST(req: NextRequest) {
       createdAt: svc.clock.nowIso(),
       mergedIntoId: null,
     };
+    // Attach the row's company as a current membership (find-or-create).
+    if (row.company) {
+      const membership = await attachCompany(personId, row.company, person.memberships);
+      if (membership) person.memberships = [...person.memberships, membership];
+    }
     await svc.people.save(person);
     created++;
     reports.push({
