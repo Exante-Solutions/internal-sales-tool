@@ -277,6 +277,10 @@ export class MemoryInitiativeRepository implements InitiativeRepository {
     for (const [id, target] of db.targets) {
       if (target.initiativeId === initiativeId) db.targets.delete(id);
     }
+    // remove calendar links for this initiative.
+    for (const [id, link] of db.calendarLinks) {
+      if (link.initiativeId === initiativeId) db.calendarLinks.delete(id);
+    }
     // unlink conversations (conversation_initiative rows) — conversations PRESERVED.
     for (const conv of db.conversations.values()) {
       if (conv.initiativeIds.includes(initiativeId)) {

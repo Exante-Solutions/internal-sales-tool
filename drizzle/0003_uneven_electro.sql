@@ -1,0 +1,2 @@
+ALTER TABLE "analysis" ADD COLUMN "recorder_action_items_jsonb" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "analysis" ADD COLUMN "next_steps_jsonb" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -289,6 +289,10 @@ export const analysis = pgTable("analysis", {
   sentiment: text("sentiment"), // 'positive'|'neutral'|'negative'
   whatWeLearnedJsonb: jsonb("what_we_learned_jsonb").notNull().default(sql`'[]'::jsonb`),
   signalsJsonb: jsonb("signals_jsonb").notNull().default(sql`'[]'::jsonb`),
+  recorderActionItemsJsonb: jsonb("recorder_action_items_jsonb")
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  nextStepsJsonb: jsonb("next_steps_jsonb").notNull().default(sql`'[]'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .default(sql`now()`),

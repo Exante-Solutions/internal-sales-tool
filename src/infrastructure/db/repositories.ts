@@ -484,6 +484,9 @@ export class NeonInitiativeRepository implements InitiativeRepository {
     await this.db
       .delete(t.conversationInitiative)
       .where(eq(t.conversationInitiative.initiativeId, initiativeId));
+    await this.db
+      .delete(t.initiativeCalendarLink)
+      .where(eq(t.initiativeCalendarLink.initiativeId, initiativeId));
     await this.db.delete(t.initiative).where(eq(t.initiative.id, initiativeId));
   }
   async listTargets(initiativeId: string): Promise<InitiativeTarget[]> {
@@ -835,12 +838,12 @@ export class NeonConversationRepository implements ConversationRepository {
       id: a.id,
       conversationId: a.conversationId,
       recorderSummaryMd: a.recorderSummaryMd ?? undefined,
-      recorderActionItems: [],
+      recorderActionItems: (a.recorderActionItemsJsonb as string[]) ?? [],
       summaryMd: a.summaryMd ?? undefined,
       sentiment: (a.sentiment as Sentiment | null) ?? undefined,
       whatWeLearned: (a.whatWeLearnedJsonb as LearnedFact[]) ?? [],
       signals: (a.signalsJsonb as Signal[]) ?? [],
-      nextSteps: [],
+      nextSteps: (a.nextStepsJsonb as string[]) ?? [],
       reasonMd: undefined,
       outcomeMd: undefined,
       createdAt: iso(a.createdAt),
@@ -857,6 +860,8 @@ export class NeonConversationRepository implements ConversationRepository {
         sentiment: analysis.sentiment ?? null,
         whatWeLearnedJsonb: analysis.whatWeLearned,
         signalsJsonb: analysis.signals,
+        recorderActionItemsJsonb: analysis.recorderActionItems,
+        nextStepsJsonb: analysis.nextSteps,
         createdAt: new Date(analysis.createdAt),
       })
       .onConflictDoUpdate({
@@ -867,6 +872,8 @@ export class NeonConversationRepository implements ConversationRepository {
           sentiment: analysis.sentiment ?? null,
           whatWeLearnedJsonb: analysis.whatWeLearned,
           signalsJsonb: analysis.signals,
+          recorderActionItemsJsonb: analysis.recorderActionItems,
+          nextStepsJsonb: analysis.nextSteps,
         },
       });
   }
