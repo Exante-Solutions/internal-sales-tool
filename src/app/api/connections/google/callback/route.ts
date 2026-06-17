@@ -47,24 +47,31 @@ export async function GET(req: NextRequest) {
 
   const svc = getServices();
 
-  // `state` is the app_user id minted at /start. Verify it resolves so a forged
-  // state can't attach a connection to an unknown user.
-  const appUser = await svc.appUsers.get(state);
-  if (!appUser) return NextResponse.redirect(backTo(req, "error"));
-
   // OAuth-linking CSRF defense (C4.1): require the browser finishing consent to
   // be the SAME workspace user named in `state`. Without this an attacker can
   // start the flow with their own `state`, have a victim complete Google consent,
   // and attach the victim's mailbox tokens to the attacker's user. The session is
-  // resolved here (not trusted from `state`); a missing/mismatched session is
-  // rejected. /start sets state = session.userId, so the legitimate user matches.
+  // the source of truth (not trusted from `state`); a missing session is rejected,
+  // and a `state` that doesn't match the live session.userId is a forged/replayed
+  // link. /start sets state = session.userId, so the legitimate user always matches.
   let session;
   try {
     session = await buildSession().current();
   } catch {
     return NextResponse.redirect(backTo(req, "error"));
   }
-  if (session.userId !== appUser.id) return NextResponse.redirect(backTo(req, "error"));
+  if (state !== session.userId) return NextResponse.redirect(backTo(req, "error"));
+
+  // Resolve the workspace identity for the SESSION user. In Auth0 mode the row
+  // was already provisioned by buildSession().current(), so this returns it. In
+  // seeded mode the demo user ("seeded-team-user") is never persisted, so there's
+  // no row — we fall back to the SESSION as the source of truth (its userId/teamId
+  // ARE the workspace identity) so seeded connect succeeds instead of redirecting
+  // google=error. The connection id/appUserId stays the exact session.userId — no
+  // id re-derivation — matching what /start minted into `state`.
+  const appUser = await svc.appUsers.get(session.userId);
+  const appUserId = appUser?.id ?? session.userId;
+  const teamId = appUser?.teamId || session.teamId || DEFAULT_TEAM_ID;
 
   const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUrl);
 
@@ -114,14 +121,13 @@ export async function GET(req: NextRequest) {
   // Store the token bundle (AWS_KMS_KEY_ID-encrypted when configured); persist
   // only the returned ref. Path: <workspaceId>/<appUserId>/google under the
   // adapter's /internal_tools/<APP_NAME>/ root.
-  const teamId = appUser.teamId || DEFAULT_TEAM_ID;
-  const ref = googleSecretRef(teamId, appUser.id);
+  const ref = googleSecretRef(teamId, appUserId);
   const secretRef = await svc.secrets.put(ref, tokenBundleJson);
 
   const conn: GoogleConnection = {
-    id: appUser.id, // one connection per workspace user
-    appUserId: appUser.id,
-    teamId: appUser.teamId || DEFAULT_TEAM_ID,
+    id: appUserId, // one connection per workspace user
+    appUserId,
+    teamId,
     googleSub,
     email,
     scopes,

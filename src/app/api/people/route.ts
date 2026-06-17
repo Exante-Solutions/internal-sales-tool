@@ -13,6 +13,7 @@ import { z } from "zod";
 import { getServices, buildSession } from "@/infrastructure/composition";
 import { makeNormalizedEmail, InvalidEmailError } from "@/domain/person";
 import type { Person, EmailIdentity } from "@/domain/person";
+import type { Company, CompanyMembership } from "@/domain/company";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,10 @@ const Create = z.object({
   displayName: z.string().min(1),
   email: z.string().email(),
   label: z.enum(["work", "personal", "former", "other"]).default("work"),
+  /** Optional company the new person currently belongs to (the /people/new form
+   * sends this). Find-or-created for the team, then attached as a current
+   * membership below (SPEC §3, §8.1). */
+  company: z.string().trim().min(1).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -77,5 +82,36 @@ export async function POST(req: NextRequest) {
     mergedIntoId: null,
   };
   await svc.people.save(person);
+
+  // Optional company: find-or-create it for the team (case-insensitive by name,
+  // since there's no email domain here), then attach the new person as a CURRENT
+  // membership so "company view" filters surface them (SPEC §3, §8.1).
+  if (d.company) {
+    const wanted = d.company.toLowerCase();
+    const companies = await svc.companies.list(session.teamId);
+    let company: Company | undefined = companies.find(
+      (c) => c.name.trim().toLowerCase() === wanted,
+    );
+    if (!company) {
+      company = {
+        id: svc.ids.next(),
+        teamId: session.teamId,
+        name: d.company,
+        createdAt: svc.clock.nowIso(),
+      };
+      await svc.companies.save(company);
+    }
+    const membership: CompanyMembership = {
+      id: svc.ids.next(),
+      personId,
+      companyId: company.id,
+      isCurrent: true,
+      startedOn: null,
+      endedOn: null,
+    };
+    await svc.companies.saveMembership(membership);
+    person.memberships = [membership];
+  }
+
   return NextResponse.json({ person, created: true }, { status: 201 });
 }

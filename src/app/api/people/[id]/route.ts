@@ -80,6 +80,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (err instanceof InvalidEmailError) return NextResponse.json({ error: err.message }, { status: 400 });
       throw err;
     }
+    // The email_normalized identity is globally unique, and people.addEmail uses
+    // ON CONFLICT DO NOTHING — so if the address already belongs to someone else
+    // the insert is silently skipped. Pre-check the owner so we don't return a
+    // false 200: a conflict with a DIFFERENT person is a 409, while re-adding an
+    // address this same person already owns is a harmless no-op success.
+    const owner = await svc.people.findByEmail(session.teamId, normalized as string);
+    if (owner && owner.id !== person.id) {
+      return NextResponse.json(
+        { error: "That email already belongs to another person" },
+        { status: 409 },
+      );
+    }
     const emailIdentity: EmailIdentity = {
       id: svc.ids.next(),
       personId: person.id,
