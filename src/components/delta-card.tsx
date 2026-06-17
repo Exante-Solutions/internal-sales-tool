@@ -14,7 +14,7 @@ function pip(score: number, filled: boolean) {
 /** The credibility moment: before → after on the drilled skill + points added. */
 export function DeltaCard({ rescore }: { rescore: Rescore }) {
   return (
-    <Card data-tour="rescore-delta" className="border-emerald-500/30 bg-emerald-500/5">
+    <Card className="border-emerald-500/30 bg-emerald-500/5">
       <CardContent className="flex flex-col gap-4 pt-4">
         <div className="flex items-center gap-2 text-emerald-300">
           <TrendingUp className="h-4 w-4" />
