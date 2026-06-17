@@ -159,6 +159,21 @@ export class IngestRecording {
         roleAtTime: part.roleAtTime,
       });
     }
+    // Reconcile to the incoming set: on re-ingest (a corrected webhook
+    // redelivery), detach participants whose person dropped off the new
+    // recording. Participants live in a separate store joined on load, so an
+    // upsert alone leaves removed attendees showing — explicitly remove the
+    // stale rows (3425265217). New ingests have no `existing`, so this no-ops.
+    if (existing) {
+      const incomingPersonIds = new Set(
+        conversationParticipants.map((part) => part.personId),
+      );
+      for (const prior of existing.participants) {
+        if (!incomingPersonIds.has(prior.personId)) {
+          await this.conversations.removeParticipant(conversationId, prior.personId);
+        }
+      }
+    }
 
     // 4. Store the recorder summary + action items as reference signal (G1/G2).
     //    On re-ingest, preserve any existing analysis: reuse its id + createdAt
