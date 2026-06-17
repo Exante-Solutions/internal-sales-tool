@@ -123,7 +123,7 @@ export function PersonProfile({ id }: { id: string }) {
   }
 
   async function confirmMerge(otherId: string) {
-    await sendJson(`/api/people/${id}/merge`, "POST", { mergePersonId: otherId });
+    await sendJson(`/api/people/${id}/merge`, "POST", { absorbedId: otherId });
     load();
   }
 

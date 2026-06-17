@@ -16,14 +16,18 @@ import {
 } from "@/lib/discovery-api";
 
 interface CompanyMemberView {
+  id: string;
+  primaryDisplayName: string;
+}
+interface CompanyMembershipView {
   personId: string;
-  personName?: string;
   title?: string | null;
   isCurrent?: boolean;
 }
 interface CompanyResponse {
   company?: { id: string; name: string; domain?: string | null };
   members?: CompanyMemberView[];
+  memberships?: CompanyMembershipView[];
   timeline?: TimelineEntryView[];
   summary?: ProfileSummaryView | null;
   conversations?: ConversationListItem[];
@@ -47,12 +51,21 @@ export function CompanyProfile({ id }: { id: string }) {
 
   const company = data.company;
   const members = data.members ?? [];
+  const memberships = data.memberships ?? [];
   const timeline = data.timeline ?? [];
   const summary = data.summary;
   const conversations = data.conversations ?? [];
 
-  const current = members.filter((m) => m.isCurrent);
-  const past = members.filter((m) => !m.isCurrent);
+  // The API returns `members` as Person records and a separate `memberships`
+  // array. Join them by personId to derive each member's title and current/past
+  // status; a member with no matching current membership is treated as past.
+  const membershipByPerson = new Map(memberships.map((m) => [m.personId, m]));
+  const decorated = members.map((m) => {
+    const ms = membershipByPerson.get(m.id);
+    return { ...m, title: ms?.title ?? null, isCurrent: ms?.isCurrent ?? false };
+  });
+  const current = decorated.filter((m) => m.isCurrent);
+  const past = decorated.filter((m) => !m.isCurrent);
 
   return (
     <div className="flex flex-col gap-5">
@@ -85,12 +98,12 @@ export function CompanyProfile({ id }: { id: string }) {
           <Card>
             <ul className="divide-y divide-neutral-800">
               {[...current, ...past].map((m) => (
-                <li key={m.personId} className="flex items-center gap-2 p-3">
+                <li key={m.id} className="flex items-center gap-2 p-3">
                   <Link
-                    href={`/people/${m.personId}`}
+                    href={`/people/${m.id}`}
                     className="min-w-0 flex-1 truncate text-sm text-neutral-100 hover:underline"
                   >
-                    {m.personName ?? m.personId}
+                    {m.primaryDisplayName}
                     {m.title ? <span className="text-neutral-500"> · {m.title}</span> : null}
                   </Link>
                   <Badge variant={m.isCurrent ? "strong" : "neutral"} className="shrink-0 text-[10px]">
@@ -140,7 +153,9 @@ export function CompanyProfile({ id }: { id: string }) {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-neutral-100">{c.title}</p>
                       <p className="text-xs text-neutral-500">
-                        {c.occurredAt ? fmtDate(c.occurredAt) : ""}
+                        {[c.source, c.occurredAt ? fmtDate(c.occurredAt) : null]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     </div>
                   </CardContent>
