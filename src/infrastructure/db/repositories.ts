@@ -8,7 +8,7 @@
  * survivor; list filters match; UNIQUE constraints back the upserts.
  */
 
-import { and, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm";
 import { getDb, type Database } from "./index";
 import * as t from "./schema";
 
@@ -243,7 +243,20 @@ export class NeonPersonRepository implements PersonRepository {
           mergedIntoId: person.mergedIntoId ?? null,
         },
       });
+    // Reconcile email_identity to exactly the person's current emails, matching
+    // the in-memory repo's whole-person replace: upsert the current addresses
+    // (addEmail's ON CONFLICT DO NOTHING covers adds) and drop any rows on this
+    // person that are no longer present, so reloads can't resolve stale emails.
     for (const e of person.emails) await this.addEmail(person.id, e);
+    const keep = person.emails.map((e) => e.emailNormalized);
+    await this.db
+      .delete(t.emailIdentity)
+      .where(
+        and(
+          eq(t.emailIdentity.personId, person.id),
+          keep.length > 0 ? notInArray(t.emailIdentity.emailNormalized, keep) : sql`true`,
+        ),
+      );
     for (const m of person.memberships) {
       await this.db
         .insert(t.companyMembership)
