@@ -76,9 +76,20 @@ export class AnalyzeConversation {
     };
     await this.conversations.saveAnalysis(analysis);
 
-    // Seed AI follow-ups from the discovery next_steps (source = ai).
+    // Seed AI follow-ups from the discovery next_steps (source = ai). Re-running
+    // analysis must not pile up duplicates (RUBRIC F6): dedupe against the prior
+    // AI-sourced follow-ups already on this conversation, keyed by text, so an
+    // unchanged next-step reuses its existing row instead of minting a new one.
+    const priorAiTexts = new Set(
+      (await this.followUps.listForConversation(conversationId, { includeArchived: true }))
+        .filter((f) => f.source === "ai")
+        .map((f) => f.text),
+    );
     const followUps: FollowUp[] = [];
+    const seeded = new Set<string>();
     for (const text of analysis.nextSteps) {
+      if (priorAiTexts.has(text) || seeded.has(text)) continue;
+      seeded.add(text);
       const followUp: FollowUp = {
         id: this.ids.next(),
         conversationId,

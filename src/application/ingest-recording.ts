@@ -26,6 +26,7 @@ import type {
   ConversationSource,
 } from "@/domain/conversation";
 import type { Analysis } from "@/domain/analysis";
+import type { Person } from "@/domain/person";
 import type { FollowUp } from "@/domain/followup";
 import type { Session } from "@/domain/session";
 import type {
@@ -36,6 +37,8 @@ import type { IdGenerator, Clock } from "./support";
 import type { ResolveIdentity, ResolvedParticipant } from "./resolve-identity";
 import type { AssociateInitiative, CalendarLinkHint } from "./associate-initiative";
 import { conversationKey } from "../../lib/ingest/idempotency.mjs";
+import { participantSnapshot } from "../../lib/conversation/snapshot.mjs";
+import { membershipAt } from "../../lib/company/membership.mjs";
 
 export interface IngestInput {
   /** "pasted" | "manual" | "recorder" (SPEC §8.1). Paste is the v1 inbound. */
@@ -100,14 +103,26 @@ export class IngestRecording {
     const now = this.clock.nowIso();
     const conversationId = existing?.id ?? this.ids.next();
 
-    const conversationParticipants: Participant[] = participants.map((rp) => ({
-      id: this.ids.next(),
-      conversationId,
-      personId: rp.person.id,
-      emailUsed: rp.emailUsed,
-      companyAtTime: rp.person.memberships.find((m) => m.isCurrent)?.companyId ?? null,
-      roleAtTime: rp.person.memberships.find((m) => m.isCurrent)?.title ?? null,
-    }));
+    // Freeze each participant's affiliation as it stood AT conversation time
+    // (recording.occurredAt) — NOT their current (isCurrent) membership. Later
+    // company moves never rewrite this history (SPEC §7). The deterministic id
+    // (conversationId:p:personId, minted by addParticipant below) keeps re-ingest
+    // idempotent — one row per (conversation, person), never a duplicate.
+    const conversationParticipants: Participant[] = participants.map((rp) => {
+      const snapshot = participantSnapshot(
+        personViewForSnapshot(rp.person),
+        recording.occurredAt,
+        rp.emailUsed,
+      ) as { emailUsed?: string; companyAtTime: string | null };
+      return {
+        id: `${conversationId}:p:${rp.person.id}`,
+        conversationId,
+        personId: rp.person.id,
+        emailUsed: snapshot.emailUsed ?? rp.emailUsed,
+        companyAtTime: snapshot.companyAtTime,
+        roleAtTime: membershipAt(personViewForSnapshot(rp.person), recording.occurredAt)?.title ?? null,
+      };
+    });
 
     const conversation: Conversation = {
       id: conversationId,
@@ -133,21 +148,40 @@ export class IngestRecording {
     }
 
     await this.conversations.save(conversation);
+    // Idempotent per (conversation, person): addParticipant upserts on the
+    // deterministic (conversationId, personId) key, so re-ingesting the same
+    // recording never mints a duplicate participant row (RUBRIC F3).
     for (const part of conversationParticipants) {
-      await this.conversations.saveParticipant(part);
+      await this.conversations.addParticipant(conversationId, {
+        personId: part.personId,
+        emailUsed: part.emailUsed,
+        companyAtTime: part.companyAtTime,
+        roleAtTime: part.roleAtTime,
+      });
     }
 
     // 4. Store the recorder summary + action items as reference signal (G1/G2).
+    //    On re-ingest, preserve any existing analysis: reuse its id + createdAt
+    //    (so the Neon upsert conflicts on the same row instead of inserting a
+    //    duplicate) and keep its discovery fields intact. Only the recorder
+    //    summary + action items are refreshed here; discovery enrichment is
+    //    AnalyzeConversation's job and must not be wiped by a redelivery (F3).
+    const priorAnalysis = await this.conversations.getAnalysis(conversationId);
     const analysis: Analysis = {
-      id: this.ids.next(),
+      id: priorAnalysis?.id ?? this.ids.next(),
       conversationId,
       recorderSummaryMd: recording.recorderSummary,
       recorderActionItems: recording.recorderActionItems ?? [],
-      whatWeLearned: [],
-      signals: [],
-      nextSteps: [],
-      createdAt: now,
+      summaryMd: priorAnalysis?.summaryMd,
+      sentiment: priorAnalysis?.sentiment,
+      whatWeLearned: priorAnalysis?.whatWeLearned ?? [],
+      signals: priorAnalysis?.signals ?? [],
+      nextSteps: priorAnalysis?.nextSteps ?? [],
+      reasonMd: priorAnalysis?.reasonMd,
+      outcomeMd: priorAnalysis?.outcomeMd,
+      createdAt: priorAnalysis?.createdAt ?? now,
       // NOTE: no coachingEvaluation — the playbook check is on-demand (H1).
+      coachingEvaluation: priorAnalysis?.coachingEvaluation,
     };
     await this.conversations.saveAnalysis(analysis);
 
@@ -187,4 +221,15 @@ export class IngestRecording {
       created: !existing,
     };
   }
+}
+
+/** Domain Person → the plain shape participantSnapshot/membershipAt expect. */
+function personViewForSnapshot(person: Person): {
+  emails: string[];
+  memberships: Person["memberships"];
+} {
+  return {
+    emails: person.emails.map((e) => e.emailNormalized as unknown as string),
+    memberships: person.memberships,
+  };
 }
