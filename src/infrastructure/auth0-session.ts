@@ -62,19 +62,15 @@ export class Auth0SessionGateway implements SessionGateway {
     const user = session.user;
     const displayName = user.name ?? user.nickname ?? user.email ?? user.sub;
 
-    // Provision the workspace identity (idempotent): upsert by Auth0 sub into
-    // the single shared workspace. The returned app_user id is the domain userId.
-    const appUser = await this.appUsers.upsertByAuth0Sub({
-      auth0Sub: user.sub,
-      email: user.email ?? "",
-      displayName,
-      avatarUrl: user.picture ?? null,
-      teamId: DEFAULT_TEAM_ID,
-    });
-
-    // The workspace name is APP-MANAGED (SPEC §9, §18.2): read it from the DB and
-    // surface it. Seed a name ONCE when the team has none yet (guarded org/claim
-    // source if present, else DEFAULT_TEAM_NAME); NEVER overwrite an existing name.
+    // Ensure the workspace (team) row EXISTS before provisioning the user. The
+    // app_user.team_id FK references team.id, so on a fresh/wiped DB the user
+    // insert below would violate the FK unless the team is created first (this
+    // was the empty-DB login 500). The workspace name is APP-MANAGED (SPEC §9,
+    // §18.2): seed it ONCE when the team has no name yet (guarded org/claim
+    // source if present, else DEFAULT_TEAM_NAME) and NEVER overwrite it after —
+    // a Settings rename is the source of truth. upsertTeamName creates the row
+    // when absent, so this also bootstraps the workspace on first login with no
+    // prior seed (no manual seeding required).
     let workspaceName = await this.appUsers.getTeamName(DEFAULT_TEAM_ID);
     if (!workspaceName) {
       const seed =
@@ -82,6 +78,18 @@ export class Auth0SessionGateway implements SessionGateway {
         DEFAULT_TEAM_NAME;
       workspaceName = await this.appUsers.upsertTeamName(DEFAULT_TEAM_ID, seed);
     }
+
+    // Provision the workspace identity (idempotent): upsert by Auth0 sub into the
+    // single shared workspace, now that its team row is guaranteed to exist. A
+    // first-time login CREATES the app_user here; the returned id is the domain
+    // userId, and downstream rows (Google connection, calendar links) hang off it.
+    const appUser = await this.appUsers.upsertByAuth0Sub({
+      auth0Sub: user.sub,
+      email: user.email ?? "",
+      displayName,
+      avatarUrl: user.picture ?? null,
+      teamId: DEFAULT_TEAM_ID,
+    });
 
     return {
       userId: appUser.id,

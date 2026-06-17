@@ -9,7 +9,8 @@
 import type { Evaluation, Transcript } from "@/domain/coaching";
 import type { StoredCallMeta } from "@/domain/store";
 import { EVALUATIONS, TRANSCRIPTS, callById } from "@/data/seed";
-import { buildCallStore, buildSession } from "@/infrastructure/composition";
+import { buildCallStore } from "@/infrastructure/composition";
+import { requireSession } from "@/lib/require-session";
 
 export interface ResolvedCall {
   meta: StoredCallMeta;
@@ -23,7 +24,11 @@ export async function resolveCall(callId: string): Promise<ResolvedCall | null> 
   const meta = callById(callId);
   if (evaluation && transcript && meta) return { meta, evaluation, transcript };
 
-  const session = await buildSession().current();
+  // Non-seeded (uploaded) call: needs the current user. Gate through
+  // requireSession so a missing live-Auth0 session redirects to /auth/login
+  // rather than 500ing the eval/drill page body. Seeded calls short-circuit
+  // above and never reach here, so the demo path is untouched.
+  const session = await requireSession();
   const stored = await buildCallStore().get(session.userId, callId);
   return stored ?? null;
 }
