@@ -43,6 +43,10 @@ import type {
   InitiativeCalendarLink,
   TargetStatus,
 } from "@/domain/initiative";
+import { TARGET_STATUSES } from "@/domain/initiative";
+
+/** Rank of a target outreach status (later in the lifecycle = more advanced). */
+const targetStatusRank = (s: TargetStatus): number => TARGET_STATUSES.indexOf(s);
 import type {
   Conversation,
   ConversationSource,
@@ -280,10 +284,53 @@ export class NeonPersonRepository implements PersonRepository {
       .update(t.companyMembership)
       .set({ personId: survivorId })
       .where(eq(t.companyMembership.personId, absorbedId));
-    await this.db
-      .update(t.initiativeTarget)
-      .set({ personId: survivorId })
+    // Reassign the absorbed person's initiative targets to the survivor, but
+    // collapse duplicates: UNIQUE(initiative_id, person_id) forbids two rows for
+    // the same initiative+person. Where the survivor is already a target of the
+    // same initiative, keep whichever row has the most-advanced status and drop
+    // the other instead of blindly re-pointing (which would violate the
+    // constraint and abort the merge).
+    const absorbedTargets = await this.db
+      .select()
+      .from(t.initiativeTarget)
       .where(eq(t.initiativeTarget.personId, absorbedId));
+    if (absorbedTargets.length > 0) {
+      const survivorTargets = await this.db
+        .select()
+        .from(t.initiativeTarget)
+        .where(eq(t.initiativeTarget.personId, survivorId));
+      const survivorByInitiative = new Map(
+        survivorTargets.map((r) => [r.initiativeId, r]),
+      );
+      for (const absorbed of absorbedTargets) {
+        const survivor = survivorByInitiative.get(absorbed.initiativeId);
+        if (!survivor) {
+          // No conflict — safe to re-point this row to the survivor.
+          await this.db
+            .update(t.initiativeTarget)
+            .set({ personId: survivorId })
+            .where(eq(t.initiativeTarget.id, absorbed.id));
+          continue;
+        }
+        // Conflict: keep the more-advanced status on the survivor's row, then
+        // delete the absorbed row so only one (initiative, survivor) row remains.
+        if (
+          targetStatusRank(absorbed.status as TargetStatus) >
+          targetStatusRank(survivor.status as TargetStatus)
+        ) {
+          await this.db
+            .update(t.initiativeTarget)
+            .set({
+              status: absorbed.status,
+              reasonMd: absorbed.reasonMd ?? survivor.reasonMd ?? null,
+            })
+            .where(eq(t.initiativeTarget.id, survivor.id));
+        }
+        await this.db
+          .delete(t.initiativeTarget)
+          .where(eq(t.initiativeTarget.id, absorbed.id));
+      }
+    }
     await this.db
       .update(t.participant)
       .set({ personId: survivorId })

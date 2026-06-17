@@ -38,6 +38,10 @@ import type {
   InitiativeCalendarLink,
   TargetStatus,
 } from "@/domain/initiative";
+import { TARGET_STATUSES } from "@/domain/initiative";
+
+/** Rank of a target outreach status (later in the lifecycle = more advanced). */
+const targetStatusRank = (s: TargetStatus): number => TARGET_STATUSES.indexOf(s);
 import type { Conversation, Participant } from "@/domain/conversation";
 import type { Analysis } from "@/domain/analysis";
 import type {
@@ -206,8 +210,32 @@ export class MemoryPersonRepository implements PersonRepository {
     for (const m of db.memberships.values()) {
       if (m.personId === absorbedId) m.personId = survivorId;
     }
-    for (const t of db.targets.values()) {
-      if (t.personId === absorbedId) t.personId = survivorId;
+    // Reassign initiative targets to the survivor, collapsing duplicates so we
+    // never end up with two rows sharing (initiativeId, survivorId) — which the
+    // Neon UNIQUE(initiative_id, person_id) constraint forbids. When the survivor
+    // is already a target of the same initiative, keep the more-advanced status.
+    const survivorTargets = new Map(
+      [...db.targets.values()]
+        .filter((t) => t.personId === survivorId)
+        .map((t) => [t.initiativeId, t] as const),
+    );
+    for (const [id, target] of db.targets) {
+      if (target.personId !== absorbedId) continue;
+      const survivorTarget = survivorTargets.get(target.initiativeId);
+      if (!survivorTarget) {
+        target.personId = survivorId;
+        survivorTargets.set(target.initiativeId, target);
+        continue;
+      }
+      // Conflict: fold into the survivor's row, keeping the more-advanced status,
+      // then drop the absorbed row.
+      if (
+        targetStatusRank(target.status) > targetStatusRank(survivorTarget.status)
+      ) {
+        survivorTarget.status = target.status;
+        survivorTarget.reasonMd = target.reasonMd ?? survivorTarget.reasonMd;
+      }
+      db.targets.delete(id);
     }
     for (const part of db.participants.values()) {
       if (part.personId === absorbedId) part.personId = survivorId;
@@ -339,9 +367,23 @@ export class MemoryInitiativeRepository implements InitiativeRepository {
 // ── Conversations ─────────────────────────────────────────────────────────────
 
 export class MemoryConversationRepository implements ConversationRepository {
+  /**
+   * Join the participants stored in the separate `db.participants` map onto the
+   * conversation document (Neon hydrates the same way). Participants attached via
+   * `addParticipant`/`saveParticipant` live only in that map, so returning the
+   * stored document verbatim would drop them and break personId/companyAtTime
+   * filters. The map is authoritative for participants here.
+   */
+  private withParticipants(c: Conversation): Conversation {
+    const participants = [...db.participants.values()].filter(
+      (p) => p.conversationId === c.id,
+    );
+    return structuredClone({ ...c, participants });
+  }
+
   async get(teamId: string, conversationId: string): Promise<Conversation | null> {
     const c = db.conversations.get(conversationId);
-    return c && c.teamId === teamId ? c : null;
+    return c && c.teamId === teamId ? this.withParticipants(c) : null;
   }
   async findByExternalId(
     teamId: string,
@@ -354,7 +396,7 @@ export class MemoryConversationRepository implements ConversationRepository {
         c.provider === provider &&
         c.externalId === externalId
       ) {
-        return c;
+        return this.withParticipants(c);
       }
     }
     return null;
@@ -385,10 +427,15 @@ export class MemoryConversationRepository implements ConversationRepository {
       }
       rows = rows.filter((c) => matchConv.has(c.id));
     }
-    return rows;
+    return rows.map((c) => this.withParticipants(c));
   }
   async save(conversation: Conversation): Promise<void> {
     db.conversations.set(conversation.id, structuredClone(conversation));
+    // Mirror Neon: persist inline participants into the authoritative map so the
+    // join in get()/list() returns them (and addParticipant rows survive a save).
+    for (const p of conversation.participants) {
+      db.participants.set(p.id, structuredClone(p));
+    }
   }
   async saveParticipant(participant: Participant): Promise<void> {
     db.participants.set(participant.id, structuredClone(participant));
