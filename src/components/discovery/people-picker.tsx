@@ -12,13 +12,11 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Search, UserPlus, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Glyph } from "@/components/ui/glyph";
 import { getJson, type PersonListItem } from "@/lib/discovery-api";
-
-const inputCls =
-  "h-11 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-neutral-500";
 
 export function PeoplePicker({
   onSelectExisting,
@@ -73,35 +71,37 @@ export function PeoplePicker({
     <Card data-region="people-picker">
       <CardContent className="flex flex-col gap-2 pt-4">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-          <input
+          <Glyph tone="muted" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+            ⌖
+          </Glyph>
+          <Field
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search people, or type a new name…"
-            className={`${inputCls} pl-9`}
+            className="pl-9"
             autoFocus
           />
         </div>
 
-        {searching && <p className="px-1 text-xs text-neutral-500">Searching…</p>}
+        {searching && <p className="px-1 font-[var(--font-mono)] text-xs text-[var(--bone-dim)]">Searching…</p>}
 
         {results.length > 0 && (
-          <ul className="divide-y divide-neutral-800 rounded-xl border border-neutral-800">
+          <ul className="divide-y divide-[var(--grid)] rounded-[var(--radius)] border border-[var(--grid)]">
             {results.map((p) => (
               <li key={p.id}>
                 <button
                   type="button"
                   disabled={busy}
                   onClick={() => onSelectExisting(p.id, p.primaryDisplayName)}
-                  className="flex w-full items-center gap-3 p-3 text-left hover:bg-neutral-800/60 disabled:opacity-50"
+                  className="flex w-full items-center gap-3 p-3 text-left hover:bg-[var(--panel-2)] disabled:opacity-50"
                 >
-                  <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                  <Glyph tone="positive">✓</Glyph>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-neutral-100">
+                    <span className="block truncate text-sm font-medium text-[var(--bone)]">
                       {p.primaryDisplayName}
                     </span>
                     {p.emails?.[0] && (
-                      <span className="block truncate text-xs text-neutral-500">
+                      <span className="block truncate font-[var(--font-mono)] text-xs text-[var(--bone-dim)]">
                         {p.emails[0].emailNormalized}
                       </span>
                     )}
@@ -114,15 +114,14 @@ export function PeoplePicker({
 
         {/* Create-new fall-through when there's no exact existing match. */}
         {trimmed.length > 0 && !exactMatch && (
-          <div className="flex flex-col gap-2 rounded-xl border border-dashed border-neutral-700 p-3">
-            <p className="flex items-center gap-1.5 text-xs text-neutral-400">
-              <UserPlus className="h-3.5 w-3.5" /> Create a new person
+          <div className="flex flex-col gap-2 rounded-[var(--radius)] border border-dashed border-[var(--grid)] p-3">
+            <p className="flex items-center gap-1.5 text-xs text-[var(--bone-dim)]">
+              <Glyph>+</Glyph> Create a new person
             </p>
-            <input
+            <Field
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="Email (optional)"
-              className={inputCls}
             />
             <Button
               size="sm"

@@ -3,18 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  Home,
-  Target,
-  MessagesSquare,
-  Users,
-  Inbox,
-  Dumbbell,
-  Settings,
-  LogOut,
-  ChevronsUpDown,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/avatar";
+import { Glyph } from "@/components/ui/glyph";
 import { navActive } from "../../lib/nav/active.mjs";
 
 /**
@@ -38,16 +29,16 @@ export interface NavUser {
 }
 
 const tabs = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/initiatives", label: "Initiatives", icon: Target },
-  { href: "/conversations", label: "Calls", icon: MessagesSquare },
-  { href: "/people", label: "People", icon: Users },
+  { href: "/", label: "Home", glyph: "◧" },
+  { href: "/initiatives", label: "Initiatives", glyph: "◎" },
+  { href: "/conversations", label: "Calls", glyph: "❝" },
+  { href: "/people", label: "People", glyph: "◔" },
 ];
 
 /** Secondary destinations — desktop sidebar only (keeps the mobile bar to 4). */
 const secondary = [
-  { href: "/conversations?inbox=1", label: "Unassigned inbox", icon: Inbox },
-  { href: "/team", label: "Team coaching", icon: Dumbbell },
+  { href: "/conversations?inbox=1", label: "Unassigned inbox", glyph: "⌅" },
+  { href: "/team", label: "Team coaching", glyph: "▰" },
 ];
 
 export function AppNav({
@@ -84,20 +75,24 @@ export function AppNavView({
   return (
     <>
       {/* Mobile: bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-800 bg-neutral-950/90 backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--grid)] bg-[var(--panel)] lg:hidden">
         <div className="mx-auto flex max-w-md items-stretch justify-around">
-          {tabs.map(({ href, label, icon: Icon }) => {
+          {tabs.map(({ href, label, glyph }) => {
             const active = navActive(pathname, search, href);
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 text-xs",
-                  active ? "text-white" : "text-neutral-500",
+                  "flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 border-t-2 border-transparent font-[var(--font-mono)] text-[10px] uppercase tracking-[0.06em] transition-colors",
+                  active
+                    ? "border-[var(--signal)] bg-[var(--panel-2)] text-[var(--bone)]"
+                    : "text-[var(--bone-dim)] hover:text-[var(--bone)]",
                 )}
               >
-                <Icon className="h-5 w-5" />
+                <Glyph tone={active ? "signal" : "muted"} className="text-base">
+                  {glyph}
+                </Glyph>
                 {label}
               </Link>
             );
@@ -106,52 +101,64 @@ export function AppNavView({
       </nav>
 
       {/* Desktop: left sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col border-r border-neutral-800 bg-neutral-950/80 px-3 py-6 backdrop-blur lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col border-r border-[var(--grid)] bg-[var(--panel)] px-3 py-5 lg:flex">
         <Link href="/" className="mb-1 flex items-center gap-2 px-2">
-          <Target className="h-5 w-5 text-amber-400" />
-          <span className="text-lg font-bold">Discovery</span>
+          <Glyph tone="signal" className="text-base">
+            ◎
+          </Glyph>
+          <span className="font-[var(--font-display)] text-[17px] font-semibold lowercase tracking-[var(--track-title)] text-[var(--bone)]">
+            coachloop
+          </span>
         </Link>
         {/* Workspace name (region) — sourced from Session.workspaceName (§18.2). */}
         <p
           data-region="workspace-name"
-          className="mb-6 truncate px-2 text-xs font-medium text-neutral-400"
+          className="mb-6 truncate px-2 font-[var(--font-mono)] text-[10px] text-[var(--bone-dim)]"
           title={workspaceName}
         >
           {workspaceName}
         </p>
 
         <nav className="flex flex-col gap-1">
-          {tabs.map(({ href, label, icon: Icon }) => {
+          {tabs.map(({ href, label, glyph }) => {
             const active = navActive(pathname, search, href);
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                  active ? "bg-neutral-800 text-white" : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200",
+                  "flex items-center gap-3 border-l-2 border-transparent px-3 py-2.5 text-sm transition-colors",
+                  active
+                    ? "border-[var(--signal)] bg-[var(--panel-2)] text-[var(--bone)]"
+                    : "text-[var(--bone-dim)] hover:bg-[var(--panel-2)] hover:text-[var(--bone)]",
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Glyph tone={active ? "signal" : "muted"} className="w-4">
+                  {glyph}
+                </Glyph>
                 {label}
               </Link>
             );
           })}
         </nav>
-        <div className="mt-6 border-t border-neutral-800 pt-4">
+        <div className="mt-6 border-t border-[var(--grid)] pt-4">
           <nav className="flex flex-col gap-1">
-            {secondary.map(({ href, label, icon: Icon }) => {
+            {secondary.map(({ href, label, glyph }) => {
               const active = navActive(pathname, search, href);
               return (
                 <Link
                   key={href}
                   href={href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                    active ? "bg-neutral-800 text-white" : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-200",
+                    "flex items-center gap-3 border-l-2 border-transparent px-3 py-2.5 text-sm transition-colors",
+                    active
+                      ? "border-[var(--attention)] bg-[var(--panel-2)] text-[var(--bone)]"
+                      : "text-[var(--bone-dim)] hover:bg-[var(--panel-2)] hover:text-[var(--bone)]",
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Glyph tone={active ? "attention" : "muted"} className="w-4">
+                    {glyph}
+                  </Glyph>
                   {label}
                 </Link>
               );
@@ -188,20 +195,20 @@ function UserMenu({ user }: { user: NavUser }) {
   return (
     <div ref={ref} data-region="user-menu" className="relative mt-auto pt-4">
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900 shadow-lg">
+        <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-[var(--radius)] border border-[var(--grid)] bg-[var(--panel)]">
           <Link
             href="/settings"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-800 hover:text-white"
+            className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-[var(--bone-dim)] transition-colors hover:bg-[var(--panel-2)] hover:text-[var(--bone)]"
           >
-            <Settings className="h-4 w-4" />
+            <Glyph>⚙</Glyph>
             Settings
           </Link>
           <a
             href="/auth/logout"
-            className="flex items-center gap-2.5 border-t border-neutral-800 px-3 py-2.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-800 hover:text-white"
+            className="flex items-center gap-2.5 border-t border-[var(--grid)] px-3 py-2.5 text-sm text-[var(--bone-dim)] transition-colors hover:bg-[var(--panel-2)] hover:text-[var(--bone)]"
           >
-            <LogOut className="h-4 w-4" />
+            <Glyph>↺</Glyph>
             Logout
           </a>
         </div>
@@ -209,29 +216,25 @@ function UserMenu({ user }: { user: NavUser }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2.5 rounded-lg border border-neutral-800 bg-neutral-900/60 px-2.5 py-2 text-left transition-colors hover:bg-neutral-900"
+        className="flex w-full items-center gap-2.5 rounded-[var(--radius)] border border-[var(--grid)] bg-[var(--panel-2)] px-2.5 py-2 text-left transition-colors hover:border-[var(--signal-deep)] hover:bg-[var(--panel)]"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Avatar
           data-region="user-avatar"
-          src={user.avatarUri}
-          alt={`${user.displayName} avatar`}
-          width={32}
-          height={32}
-          className="h-8 w-8 shrink-0 rounded-full"
+          initials={user.initials}
+          accent="signal"
         />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-neutral-100">
+          <span className="block truncate text-sm font-medium text-[var(--bone)]">
             {user.displayName}
           </span>
           <span
             data-region="user-email"
-            className="block truncate text-xs text-neutral-500"
+            className="block truncate font-[var(--font-mono)] text-[10px] text-[var(--bone-dim)]"
           >
             {user.email}
           </span>
         </span>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 text-neutral-500" />
+        <Glyph tone="muted">↕</Glyph>
       </button>
     </div>
   );

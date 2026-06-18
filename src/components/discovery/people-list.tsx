@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Users, Search, ChevronRight, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Glyph } from "@/components/ui/glyph";
 import { getJson, type PersonListItem } from "@/lib/discovery-api";
 
 export function PeopleList() {
@@ -35,23 +36,25 @@ export function PeopleList() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-sky-400" />
-          <h1 className="text-2xl font-bold">People</h1>
+          <Glyph>◔</Glyph>
+          <h1 className="text-2xl font-semibold text-[var(--bone)]">People</h1>
         </div>
         <Link href="/people/new" data-region="add-person">
           <Button size="sm">
-            <Plus className="h-4 w-4" /> Add person
+            <Glyph>+</Glyph> Add person
           </Button>
         </Link>
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-        <input
+        <Glyph tone="muted" className="absolute left-3 top-1/2 -translate-y-1/2">
+          ⌖
+        </Glyph>
+        <Field
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, email, or company"
-          className="h-11 w-full rounded-xl border border-neutral-700 bg-neutral-900 pl-9 pr-3 text-sm text-neutral-100 outline-none focus:border-neutral-500"
+          className="pl-9"
         />
       </div>
 
@@ -59,8 +62,8 @@ export function PeopleList() {
         query ? (
           <Card data-empty-state="people-search">
             <CardContent className="flex flex-col items-start gap-2 pt-4">
-              <p className="text-sm font-medium text-neutral-200">No people match that search</p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-sm font-medium text-[var(--bone)]">No people match that search</p>
+              <p className="text-xs text-[var(--bone-dim)]">
                 Nothing matched &ldquo;{query}&rdquo; by name, email, or company.
                 Try a different term or clear the search.
               </p>
@@ -72,14 +75,14 @@ export function PeopleList() {
         ) : (
           <Card data-empty-state="people">
             <CardContent className="flex flex-col items-start gap-2 pt-4">
-              <p className="text-sm font-medium text-neutral-200">No people yet</p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-sm font-medium text-[var(--bone)]">No people yet</p>
+              <p className="text-xs text-[var(--bone-dim)]">
                 People are created from call participants and synced emails, or
                 added by hand. Add one to start a profile and timeline.
               </p>
               <Link href="/people/new" className="mt-1">
                 <Button size="sm" variant="secondary">
-                  <Plus className="h-4 w-4" /> Add a person
+                  <Glyph>+</Glyph> Add a person
                 </Button>
               </Link>
             </CardContent>
@@ -89,13 +92,13 @@ export function PeopleList() {
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
           {people.map((p) => (
             <Link key={p.id} href={`/people/${p.id}`}>
-              <Card className="h-full transition-colors hover:border-neutral-700">
+              <Card accent="signal" className="h-full">
                 <CardContent className="flex items-center gap-3 pt-4">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-neutral-100">
+                    <p className="truncate text-sm font-semibold text-[var(--bone)]">
                       {p.primaryDisplayName}
                     </p>
-                    <p className="truncate text-xs text-neutral-500">
+                    <p className="truncate font-[var(--font-mono)] text-xs text-[var(--bone-dim)]">
                       {p.emails?.[0]?.emailNormalized ?? ""}
                       {p.currentCompany ? ` · ${p.currentCompany}` : ""}
                     </p>
@@ -105,7 +108,7 @@ export function PeopleList() {
                       {p.emails.length} emails
                     </Badge>
                   )}
-                  <ChevronRight className="h-5 w-5 shrink-0 text-neutral-600" />
+                  <Glyph tone="muted">→</Glyph>
                 </CardContent>
               </Card>
             </Link>

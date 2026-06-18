@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, ChevronRight, ChevronDown, Loader2, Target } from "lucide-react";
 import { teamStats, teamItemScores } from "@/data/seed";
 import { RUBRICS, type CallType } from "@/domain/rubric";
 import type { TeamCoachingAction } from "@/domain/team";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Glyph } from "@/components/ui/glyph";
 import { cn } from "@/lib/utils";
 
 /**
@@ -43,9 +43,9 @@ export function TeamView() {
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <h1 className="text-2xl font-bold">Team</h1>
-        <p className="text-sm text-neutral-400">
-          How is the team doing on this call type against its rubric — and who to coach next.
+        <h1 className="text-2xl font-semibold text-[var(--bone)]">Team</h1>
+        <p className="text-sm text-[var(--bone-dim)]">
+          How is the team doing on this call type against its rubric - and who to coach next.
         </p>
       </header>
 
@@ -55,8 +55,10 @@ export function TeamView() {
             key={ct}
             onClick={() => setCallType(ct)}
             className={cn(
-              "flex-1 rounded-lg border py-2 text-sm capitalize",
-              ct === callType ? "border-white bg-neutral-800 text-white" : "border-neutral-800 text-neutral-400",
+              "flex-1 rounded-[var(--radius)] border py-2 text-sm capitalize transition-colors",
+              ct === callType
+                ? "border-[var(--signal)] bg-[var(--panel-2)] text-[var(--bone)]"
+                : "border-[var(--grid)] text-[var(--bone-dim)] hover:text-[var(--bone)]",
             )}
           >
             {ct}
@@ -66,34 +68,34 @@ export function TeamView() {
 
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-2 lg:items-start">
       {/* HERO: the agentic coaching action (who needs what + assign a drill) */}
-      <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-transparent">
+      <Card accent="attention">
         <CardContent className="flex flex-col gap-3 pt-4">
-          <div className="flex items-center gap-2 text-amber-300">
-            <Sparkles className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-[var(--attention)]">
+            <Glyph tone="attention">◍</Glyph>
             <span className="text-xs font-semibold uppercase tracking-wide">Coaching action</span>
           </div>
 
           {loadingAction || !action ? (
-            <div className="flex items-center gap-2 text-sm text-neutral-400">
-              <Loader2 className="h-4 w-4 animate-spin" /> Reading the team’s scorecard…
+            <div className="flex items-center gap-2 text-sm text-[var(--bone-dim)]">
+              <Glyph className="animate-spin">⟳</Glyph> Reading the team’s scorecard…
             </div>
           ) : (
             <>
-              <p className="text-sm font-medium leading-relaxed text-neutral-100">{action.headline}</p>
+              <p className="text-sm font-medium leading-relaxed text-[var(--bone)]">{action.headline}</p>
               <div className="flex flex-col gap-2">
                 {action.recommendations.map((rec) => (
                   <div
                     key={rec.repId}
-                    className="flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-950/60 p-3"
+                    className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--grid)] bg-[var(--void)] p-3"
                   >
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-neutral-100">{rec.repName}</p>
-                      <p className="text-xs leading-relaxed text-neutral-400">{rec.why}</p>
+                      <p className="text-sm font-medium text-[var(--bone)]">{rec.repName}</p>
+                      <p className="text-xs leading-relaxed text-[var(--bone-dim)]">{rec.why}</p>
                     </div>
                     {rec.drillCallId ? (
                       <Link href={`/call/${rec.drillCallId}/drill?skillId=${rec.itemId}`}>
                         <Button size="sm" className="shrink-0">
-                          <Target className="h-3.5 w-3.5" /> Assign drill
+                          <Glyph>⌖</Glyph> Assign drill
                         </Button>
                       </Link>
                     ) : (
@@ -124,13 +126,13 @@ export function TeamView() {
                     className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-neutral-800/40"
                   >
                     {open ? (
-                      <ChevronDown className="h-4 w-4 shrink-0 text-neutral-500" />
+                      <Glyph tone="muted">↓</Glyph>
                     ) : (
-                      <ChevronRight className="h-4 w-4 shrink-0 text-neutral-500" />
+                      <Glyph tone="muted">→</Glyph>
                     )}
                     <div className="flex-1">
-                      <p className="text-sm text-neutral-100">{s.name}</p>
-                      <p className="text-xs text-neutral-500">weight {s.weight}</p>
+                      <p className="text-sm text-[var(--bone)]">{s.name}</p>
+                      <p className="font-[var(--font-mono)] text-xs text-[var(--bone-dim)]">weight {s.weight}</p>
                     </div>
                     <Badge variant={s.avg >= 4 ? "strong" : s.avg >= 3 ? "needs_work" : "redo"}>{s.avg}/5</Badge>
                   </button>
@@ -139,17 +141,17 @@ export function TeamView() {
                     <div className="flex flex-col gap-1.5 px-3 pb-3 pl-10">
                       {people.map((p) => (
                         <div key={p.repId} className="flex items-center gap-2">
-                          <span className="w-24 shrink-0 text-xs text-neutral-300">{p.repName.split(" ")[0]}</span>
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-800">
+                          <span className="w-24 shrink-0 text-xs text-[var(--bone-dim)]">{p.repName.split(" ")[0]}</span>
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-[var(--radius)] bg-[var(--grid)]">
                             <div
                               className={cn(
-                                "h-full rounded-full",
-                                p.score >= 4 ? "bg-emerald-400" : p.score === 3 ? "bg-amber-400" : "bg-rose-400",
+                                "h-full rounded-[var(--radius)]",
+                                p.score >= 4 ? "bg-[var(--positive)]" : "bg-[var(--attention)]",
                               )}
                               style={{ width: `${(p.score / 5) * 100}%` }}
                             />
                           </div>
-                          <span className="w-8 shrink-0 text-right text-xs tabular-nums text-neutral-400">{p.score}/5</span>
+                          <span className="w-8 shrink-0 text-right font-[var(--font-mono)] text-xs tabular-nums text-[var(--bone-dim)]">{p.score}/5</span>
                         </div>
                       ))}
                     </div>

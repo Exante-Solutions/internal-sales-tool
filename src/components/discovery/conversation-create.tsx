@@ -2,9 +2,10 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Field, Textarea } from "@/components/ui/field";
+import { Glyph } from "@/components/ui/glyph";
 import { PageBack } from "@/components/discovery/page-back";
 import { cn } from "@/lib/utils";
 import { sendJson } from "@/lib/discovery-api";
@@ -60,8 +61,10 @@ export function ConversationCreate() {
             key={m}
             onClick={() => setMode(m)}
             className={cn(
-              "min-h-[40px] flex-1 rounded-lg border py-2 text-sm capitalize",
-              m === mode ? "border-white bg-neutral-800 text-white" : "border-neutral-800 text-neutral-400",
+              "min-h-[40px] flex-1 rounded-[var(--radius)] border py-2 text-sm capitalize transition-colors",
+              m === mode
+                ? "border-[var(--signal)] bg-[var(--panel-2)] text-[var(--bone)]"
+                : "border-[var(--grid)] text-[var(--bone-dim)] hover:text-[var(--bone)]",
             )}
           >
             {m === "pasted" ? "Paste transcript" : "Log meeting (notes)"}
@@ -71,28 +74,26 @@ export function ConversationCreate() {
 
       <Card>
         <CardContent className="flex flex-col gap-3 pt-4">
-          <input
+          <Field
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title"
-            className="h-11 rounded-xl border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-neutral-500"
           />
-          <input
+          <Field
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Reason for the conversation (optional)"
-            className="h-11 rounded-xl border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-neutral-500"
           />
-          <textarea
+          <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={10}
             placeholder={
               mode === "pasted"
                 ? "[00:00] Rep: Thanks for the time…\n[00:11] Prospect: Sure."
-                : "Meeting notes — who, what was discussed, outcome…"
+                : "Meeting notes - who, what was discussed, outcome…"
             }
-            className="resize-none rounded-xl border border-neutral-700 bg-neutral-900 p-3 font-mono text-xs leading-relaxed text-neutral-100 outline-none focus:border-neutral-500"
+            className="resize-none font-[var(--font-mono)] text-xs leading-relaxed"
           />
           <div className="flex items-center gap-2">
             <input
@@ -103,18 +104,18 @@ export function ConversationCreate() {
               className="hidden"
             />
             <Button variant="secondary" onClick={() => fileRef.current?.click()} className="shrink-0">
-              <Upload className="h-4 w-4" /> Upload .txt
+              <Glyph>⇧</Glyph> Upload .txt
             </Button>
             <Button onClick={create} disabled={busy || text.trim().length < 10} className="flex-1">
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create conversation"}
+              {busy ? <Glyph className="animate-spin">⟳</Glyph> : "Create conversation"}
             </Button>
           </div>
           {mode === "manual" && (
-            <p className="text-[11px] text-neutral-600">
-              Manual meetings have no transcript — the playbook check is skipped.
+            <p className="font-[var(--font-mono)] text-[11px] text-[var(--bone-dim)]">
+              Manual meetings have no transcript - the playbook check is skipped.
             </p>
           )}
-          {error && <p className="text-sm text-rose-400">{error}</p>}
+          {error && <p className="text-sm text-[var(--attention)]">{error}</p>}
         </CardContent>
       </Card>
     </div>

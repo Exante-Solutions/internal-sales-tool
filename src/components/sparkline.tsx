@@ -11,8 +11,18 @@ export function Sparkline({ points, width = 96, height = 28 }: { points: number[
   const up = last >= first;
   return (
     <svg width={width} height={height} className="overflow-visible">
-      <path d={d} fill="none" className={up ? "stroke-emerald-400" : "stroke-rose-400"} strokeWidth={1.5} />
-      <circle cx={(points.length - 1) * step} cy={y(last)} r={2.5} className={up ? "fill-emerald-400" : "fill-rose-400"} />
+      <path
+        d={d}
+        fill="none"
+        className={up ? "stroke-[var(--positive)]" : "stroke-[var(--attention)]"}
+        strokeWidth={1.5}
+      />
+      <circle
+        cx={(points.length - 1) * step}
+        cy={y(last)}
+        r={2.5}
+        className={up ? "fill-[var(--positive)]" : "fill-[var(--attention)]"}
+      />
     </svg>
   );
 }

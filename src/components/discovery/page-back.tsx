@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { Glyph } from "@/components/ui/glyph";
 
 /** Shared back link used across detail screens. */
 export function PageBack({ href, label }: { href: string; label: string }) {
   return (
-    <Link href={href} className="flex items-center gap-1 text-sm text-neutral-400 hover:text-neutral-200">
-      <ChevronLeft className="h-4 w-4" /> {label}
+    <Link
+      href={href}
+      className="flex items-center gap-1 font-[var(--font-mono)] text-xs text-[var(--bone-dim)] hover:text-[var(--bone)]"
+    >
+      <Glyph tone="muted">←</Glyph> {label}
     </Link>
   );
 }

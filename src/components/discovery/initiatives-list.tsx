@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Target, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Field, Select, Textarea } from "@/components/ui/field";
+import { Glyph } from "@/components/ui/glyph";
 import {
   getJson,
   sendJson,
@@ -70,40 +71,37 @@ export function InitiativesList() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Target className="h-5 w-5 text-amber-400" />
-          <h1 className="text-2xl font-bold">Initiatives</h1>
+          <Glyph>◎</Glyph>
+          <h1 className="text-2xl font-semibold text-[var(--bone)]">Initiatives</h1>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          <Plus className="h-4 w-4" /> New
+          <Glyph>+</Glyph> New
         </Button>
       </div>
 
       {creating && (
         <Card>
           <CardContent className="flex flex-col gap-3 pt-4">
-            <input
+            <Field
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Initiative name"
-              className="h-11 rounded-xl border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 outline-none focus:border-neutral-500"
             />
-            <select
+            <Select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="h-11 rounded-xl border border-neutral-700 bg-neutral-900 px-3 text-sm capitalize text-neutral-100 outline-none focus:border-neutral-500"
             >
               {INITIATIVE_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {statusLabel(t)}
                 </option>
               ))}
-            </select>
-            <textarea
+            </Select>
+            <Textarea
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               placeholder="Goal / hypothesis"
               rows={3}
-              className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-neutral-500"
             />
             <div className="flex gap-2">
               <Button size="sm" onClick={create} disabled={busy || !name.trim()}>
@@ -120,14 +118,14 @@ export function InitiativesList() {
       {items.length === 0 ? (
         <Card data-empty-state="initiatives">
           <CardContent className="flex flex-col items-start gap-2 pt-4">
-            <p className="text-sm font-medium text-neutral-200">No initiatives yet</p>
-            <p className="text-xs text-neutral-500">
+            <p className="text-sm font-medium text-[var(--bone)]">No initiatives yet</p>
+            <p className="text-xs text-[var(--bone-dim)]">
               An initiative is a market, account, or motion you&apos;re running
               discovery against. Create one to build its prospect list and link
               conversations.
             </p>
             <Button size="sm" variant="secondary" className="mt-1" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> New initiative
+              <Glyph>+</Glyph> New initiative
             </Button>
           </CardContent>
         </Card>
@@ -136,11 +134,11 @@ export function InitiativesList() {
           {items.map((i) => (
             <div key={i.id} className="relative">
               <Link href={`/initiatives/${i.id}`}>
-                <Card className="h-full transition-colors hover:border-neutral-700">
+                <Card accent={i.status === "active" ? "signal" : "neutral"} className="h-full">
                   <CardContent className="flex flex-col gap-2 pt-4">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-neutral-100">{i.name}</p>
-                      <ChevronRight className="h-5 w-5 shrink-0 text-neutral-600" />
+                      <p className="text-sm font-semibold text-[var(--bone)]">{i.name}</p>
+                      <Glyph tone="muted">→</Glyph>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="neutral" className="capitalize">
@@ -151,7 +149,7 @@ export function InitiativesList() {
                       </Badge>
                     </div>
                     {i.goalMd && (
-                      <p className="line-clamp-2 text-xs text-neutral-500">{i.goalMd}</p>
+                      <p className="line-clamp-2 font-[var(--font-serif)] text-sm leading-relaxed text-[var(--bone-dim)]">{i.goalMd}</p>
                     )}
                   </CardContent>
                 </Card>
@@ -166,9 +164,9 @@ export function InitiativesList() {
                     e.stopPropagation();
                     remove(i.id, i.name);
                   }}
-                  className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-800 hover:text-rose-400 disabled:opacity-50"
+                  className="rounded-[var(--radius)] p-1.5 text-[var(--bone-dim)] hover:bg-[var(--panel-2)] hover:text-[var(--attention)] disabled:opacity-50"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Glyph tone="attention">×</Glyph>
                 </button>
               </div>
             </div>

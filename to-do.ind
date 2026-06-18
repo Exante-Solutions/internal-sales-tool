@@ -1,0 +1,17 @@
+# UI To Do For Next Branch
+
+This branch is component-first. Keep these visible for the next BR:
+
+- Page restructuring to match the handoff screens.
+- Shell geometry adoption.
+- Prototype top bar adoption.
+- Prototype slash/left rail adoption.
+- Full screen-by-screen prototype fidelity pass:
+  - Home attention-first dashboard.
+  - Initiatives index card grid and detail feed/pipeline view.
+  - Conversation record with transcript beside analysis.
+  - Person profile timeline-centric view.
+  - Company profile aggregation-lens view.
+- Complete replacement of remaining legacy lucide icons outside touched surfaces.
+- Complete replacement of remaining legacy rounded/pastel Tailwind classes outside touched surfaces.
+- Add visual QA screenshots after the layout branch lands.
